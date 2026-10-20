@@ -71,7 +71,7 @@ class CaptureController:
                 self._capture_error('底噪至少需要 0.10 秒，请重新采集。')
                 return
             self._store_noise(clip, 'microphone')
-            self._status('环境底噪已独立保存；可以继续录制语音，去噪算法将在下一阶段接入。')
+            self._status('环境底噪已独立保存；可继续录制语音，或对当前原声执行去噪。')
         elif kind == 'voice':
             self._job(lambda: (clip, analyze(clip)),
                       lambda result: self._loaded(result, source_kind='recording'),
@@ -93,11 +93,13 @@ class CaptureController:
         self.input_combo.setToolTip(self.input_combo.currentText())
         if self.noise_clip is not None:
             self.noise_confirmed = False
+            self._invalidate_denoise()
             self._noise_status()
         self._status('输入设备已切换，已有底噪请确认是否仍适用。')
         self._controls()
 
     def _source_replaced(self, source_kind):
+        self._invalidate_denoise()
         if self._noise_kind == 'selection':
             self.noise_clip = None
             self.noise_confirmed = False
@@ -110,6 +112,7 @@ class CaptureController:
         self.noise_clip = clip
         self.noise_confirmed = True
         self._noise_kind = kind
+        self._invalidate_denoise()
         self._noise_status()
         self._controls()
 
@@ -136,6 +139,7 @@ class CaptureController:
         self.noise_clip = None
         self.noise_confirmed = False
         self._noise_kind = None
+        self._invalidate_denoise()
         self._noise_status()
         self._controls()
         self._status('底噪已清除，原声保持不变。')

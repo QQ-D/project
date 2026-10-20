@@ -52,7 +52,7 @@ def test_noise_capture_auto_stops_without_overwriting_original(app,tmp_path):
     assert window.clip is original
     assert window.noise_clip.duration==1.5
     assert window.noise_confirmed
-    assert not window.denoise_button.isEnabled()
+    assert window.denoise_button.isEnabled()
     window.close()
 
 
