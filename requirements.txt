@@ -1,0 +1,5 @@
+# 本机已在 Conda base 中验证这些版本；项目 .venv-run 直接继承，无需安装。
+PyQt5==5.15.10
+numpy==2.1.3
+scipy==1.15.3
+matplotlib==3.10.0

@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1200" viewBox="0 0 1920 1200">
+<rect width="1920" height="1200" fill="#f2f5f9"/>
+<rect x="0" y="0" width="1920" height="52" rx="0" fill="#e5ebf3" stroke="none"/>
+<text x="24.00" y="34.36" font-family="Noto Sans CJK SC, sans-serif" font-size="22" font-weight="700" fill="#263549">智能人声音效台</text>
+<text x="260.00" y="33.20" font-family="Noto Sans CJK SC, sans-serif" font-size="15" font-weight="400" fill="#728094">Python 版 · 扩展功能设计</text>
+<rect x="24" y="64" width="210" height="32" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="57.00" y="85.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">基础工作台 · 必做</text>
+<rect x="244" y="64" width="260" height="32" rx="5" fill="#1685f8" stroke="#1685f8"/>
+<text x="310.50" y="85.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="white">扩展功能 · 选做</text>
+<text x="530.00" y="87.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#728094">选做功能集中展示；不影响主工作台基础任务验收</text>
+<text x="1713.00" y="87.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">静态原型 · 扩展尚未实现</text>
+<rect x="24" y="130" width="608" height="974" rx="7" fill="white" stroke="#d8e1eb"/>
+<rect x="25" y="131" width="606" height="46" rx="6" fill="#edf3fb" stroke="none"/>
+<text x="42.00" y="163.48" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="700" fill="#285a9a">A  高级音效与音效串联</text>
+<text x="42.00" y="208.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">对当前音频继续加工，可与基础去噪、增强串联。</text>
+<rect x="44" y="231" width="568" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="56.00" y="255.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">输入阶段：增强结果 </text>
+<polyline points="587.00,246.00 593.00,252.00 599.00,246.00" fill="none" stroke="#728094" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="44" y="289" width="17" height="17" rx="3" fill="#1685f8" stroke="none"/>
+<polyline points="48.00,298.00 51.00,301.00 57.00,294.00" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+<text x="68.00" y="303.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">多重回声</text>
+<rect x="324" y="289" width="17" height="17" rx="3" fill="#1685f8" stroke="none"/>
+<polyline points="328.00,298.00 331.00,301.00 337.00,294.00" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+<text x="348.00" y="303.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">房间混响</text>
+<text x="44.00" y="349.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">回声次数</text>
+<polyline points="214.00,345.00 469.00,345.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,345.00 290.50,345.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="290.5" cy="345" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="330" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="354.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">3 次</text>
+<text x="44.00" y="399.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">混响干湿比</text>
+<polyline points="214.00,395.00 469.00,395.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,395.00 290.50,395.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="290.5" cy="395" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="380" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="404.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">30 %</text>
+<rect x="44" y="447" width="17" height="17" rx="3" fill="#1685f8" stroke="none"/>
+<polyline points="48.00,456.00 51.00,459.00 57.00,452.00" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+<text x="68.00" y="461.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">动态压缩</text>
+<text x="44.00" y="507.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">压缩阈值</text>
+<polyline points="214.00,503.00 469.00,503.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,503.00 354.25,503.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="354.25" cy="503" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="488" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="512.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">−18 dB</text>
+<text x="44.00" y="557.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">压缩比</text>
+<polyline points="214.00,553.00 469.00,553.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,553.00 290.50,553.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="290.5" cy="553" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="538" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="562.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">3 : 1</text>
+<rect x="44" y="605" width="17" height="17" rx="3" fill="#1685f8" stroke="none"/>
+<polyline points="48.00,614.00 51.00,617.00 57.00,610.00" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+<text x="68.00" y="619.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">机械电音 / 调制</text>
+<text x="44.00" y="665.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">调制频率</text>
+<polyline points="214.00,661.00 469.00,661.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,661.00 277.75,661.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="277.75" cy="661" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="646" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="670.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">80 Hz</text>
+<text x="44.00" y="732.84" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="700" fill="#285a9a">音高与语速独立调整</text>
+<text x="44.00" y="774.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">音高</text>
+<polyline points="214.00,770.00 469.00,770.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,770.00 341.50,770.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="341.5" cy="770" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="755" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="779.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">+0 半音</text>
+<text x="44.00" y="824.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">语速</text>
+<polyline points="214.00,820.00 469.00,820.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="214.00,820.00 298.92,820.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="298.915" cy="820" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="489" y="805" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="501.00" y="829.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">1.00×</text>
+<text x="44.00" y="885.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#263549">串联顺序</text>
+<rect x="44" y="902" width="568" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="56.00" y="926.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">变调 / 变速 → 压缩 → 调制 → 回声 / 混响</text>
+<rect x="44" y="954" width="170" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="78.00" y="978.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">调整处理顺序</text>
+<rect x="44" y="1027" width="270" height="38" rx="5" fill="#1685f8" stroke="#1685f8"/>
+<text x="128.00" y="1051.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="white">应用高级音效</text>
+<rect x="326" y="1027" width="286" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="418.00" y="1051.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">试听扩展结果</text>
+<rect x="656" y="130" width="608" height="974" rx="7" fill="white" stroke="#d8e1eb"/>
+<rect x="657" y="131" width="606" height="46" rx="6" fill="#edf3fb" stroke="none"/>
+<text x="674.00" y="163.48" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="700" fill="#285a9a">B  中文文字转语音（TTS）</text>
+<text x="674.00" y="208.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">输入中文生成语音，再送入已有音效模块。</text>
+<rect x="676" y="231" width="568" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="688.00" y="255.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">语音来源：可用 TTS 引擎 </text>
+<polyline points="1219.00,246.00 1225.00,252.00 1231.00,246.00" fill="none" stroke="#728094" stroke-width="1.5" stroke-linejoin="round"/>
+<text x="676.00" y="304.84" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="700" fill="#263549">中文文本</text>
+<rect x="676" y="326" width="568" height="196" rx="5" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="694.00" y="363.60" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#263549">欢迎来到智能人声音效台。</text>
+<text x="694.00" y="402.60" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#263549">这是一段用于综合实验演示的配音。</text>
+<text x="1089.00" y="504.32" font-family="Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#728094">示例文本 · 40 字以内</text>
+<text x="676.00" y="573.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">合成语速</text>
+<polyline points="846.00,569.00 1101.00,569.00" fill="none" stroke="#d4dce6" stroke-width="5" stroke-linejoin="round"/>
+<polyline points="846.00,569.00 930.91,569.00" fill="none" stroke="#1685f8" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="930.915" cy="569" r="7" fill="white" stroke="#95a8bd"/>
+<rect x="1121" y="554" width="122" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1133.00" y="578.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">1.00×</text>
+<rect x="676" y="618" width="270" height="38" rx="5" fill="#1685f8" stroke="#1685f8"/>
+<text x="777.00" y="642.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="white">生成语音</text>
+<rect x="958" y="618" width="286" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1067.00" y="642.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">停止生成</text>
+<text x="676.00" y="702.84" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#728094">生成状态：尚未生成</text>
+<rect x="676" y="730" width="568" height="8" rx="4" fill="#e3e8ef" stroke="none"/>
+<text x="676.00" y="789.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#728094">采样率：—     时长：—     输出格式：WAV</text>
+<rect x="676" y="833" width="270" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="760.00" y="857.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">试听生成语音</text>
+<rect x="958" y="833" width="286" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1047.25" y="857.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">保存生成 WAV</text>
+<rect x="676" y="905" width="568" height="86" rx="5" fill="#f1f6fe" stroke="none"/>
+<text x="696.00" y="939.84" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="700" fill="#285a9a">生成语音 → 主工作台原声 → 风格音效</text>
+<text x="696.00" y="970.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">可制作电话音、磁性音、回声等风格配音</text>
+<rect x="676" y="1027" width="568" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="875.00" y="1051.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">送入主工作台制作配音</text>
+<rect x="1288" y="130" width="608" height="974" rx="7" fill="white" stroke="#d8e1eb"/>
+<rect x="1289" y="131" width="606" height="46" rx="6" fill="#edf3fb" stroke="none"/>
+<text x="1306.00" y="163.48" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="700" fill="#285a9a">C  智能语音增强与方法对比</text>
+<text x="1306.00" y="208.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">训练小型网络或调用预训练模型，降噪或去混响。</text>
+<rect x="1308" y="231" width="178" height="38" rx="5" fill="#1685f8" stroke="#1685f8"/>
+<text x="1354.50" y="255.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="white">预训练模型</text>
+<rect x="1498" y="231" width="178" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1557.25" y="255.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">小型 BP</text>
+<rect x="1688" y="231" width="178" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1740.00" y="255.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">小型 CNN</text>
+<rect x="1308" y="289" width="386" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="313.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">模型文件：尚未加载</text>
+<rect x="1706" y="289" width="170" height="36" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1740.00" y="312.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">选择本地模型</text>
+<rect x="1308" y="345" width="386" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="369.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">训练 / 验证数据：尚未选择</text>
+<rect x="1706" y="345" width="170" height="36" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1748.50" y="368.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">选择数据集</text>
+<rect x="1308" y="401" width="270" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="425.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">训练轮数：20</text>
+<rect x="1590" y="401" width="286" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1602.00" y="425.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">批大小：16</text>
+<rect x="1308" y="457" width="270" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1409.00" y="481.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">开始训练</text>
+<rect x="1590" y="457" width="286" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1682.00" y="481.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#263549">查看训练日志</text>
+<text x="1308.00" y="522.20" font-family="Noto Sans CJK SC, sans-serif" font-size="15" font-weight="400" fill="#728094">训练参数仅在 BP / CNN 模式启用</text>
+<rect x="1308" y="550" width="568" height="36" rx="4" fill="#f9fbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="574.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">任务：智能降噪 / 去混响 </text>
+<polyline points="1851.00,565.00 1857.00,571.00 1863.00,565.00" fill="none" stroke="#728094" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="1308" y="606" width="568" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1541.00" y="630.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">运行智能增强</text>
+<text x="1308.00" y="681.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#728094">状态：模型尚未加载，未运行增强</text>
+<text x="1308.00" y="735.72" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="700" fill="#285a9a">传统方法与智能方法对比</text>
+<rect x="1308" y="762" width="568" height="40" rx="2" fill="#f3f6fb" stroke="#d8e1eb"/>
+<text x="1320.00" y="788.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">方法</text>
+<text x="1716.00" y="788.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">SNR 提升 / 处理耗时</text>
+<rect x="1308" y="804" width="568" height="40" rx="2" fill="#fafbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="830.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">传统谱减</text>
+<text x="1817.50" y="830.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">— / —</text>
+<rect x="1308" y="846" width="568" height="40" rx="2" fill="#fafbfd" stroke="#d8e1eb"/>
+<text x="1320.00" y="872.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#263549">智能增强</text>
+<text x="1817.50" y="872.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">— / —</text>
+<text x="1308.00" y="925.20" font-family="Noto Sans CJK SC, sans-serif" font-size="15" font-weight="400" fill="#728094">SNR 仅用于有干净参考的测试；实录无参考时显示 —</text>
+<text x="1308.00" y="962.08" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#728094">点击对比后，在主工作台查看图形并切换试听</text>
+<rect x="1308" y="1027" width="270" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1384.75" y="1051.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">传统 / 智能对比</text>
+<rect x="1590" y="1027" width="286" height="38" rx="5" fill="#f6f8fb" stroke="#d8e1eb"/>
+<text x="1682.00" y="1051.96" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#a0a9b5">保存智能结果</text>
+<text x="24.00" y="1154.72" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="700" fill="#285a9a">扩展设计覆盖：高级音效、TTS、智能语音增强；可按时间选择实现，不计入基础功能完成状态。</text>
+<text x="24.00" y="1192.32" font-family="Noto Sans CJK SC, sans-serif" font-size="14" font-weight="400" fill="#728094">静态设计稿 v2 · 所有控件均为拟定入口；TTS 引擎、模型和数据集尚未配置</text>
+</svg>
