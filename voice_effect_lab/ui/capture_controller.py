@@ -101,6 +101,7 @@ class CaptureController:
         self._controls()
 
     def _source_replaced(self, source_kind):
+        self._clear_enhancement()
         self._invalidate_denoise()
         if self._noise_kind == 'selection':
             self.noise_clip = None

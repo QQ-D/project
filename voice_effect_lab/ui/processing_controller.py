@@ -10,11 +10,30 @@ class ProcessingController:
 
     @property
     def current_clip(self):
-        return self.denoised_clip if self.stages.checkedId() == 1 else self.clip
+        return {0:self.clip, 1:self.denoised_clip, 2:self.enhanced_clip}.get(self.stages.checkedId())
 
     @property
     def stage_name(self):
-        return '去噪' if self.stages.checkedId() == 1 else '原声'
+        return {0:'原声', 1:'去噪', 2:'增强'}.get(self.stages.checkedId(), '原声')
+
+    def _can_denoise(self):
+        return self.auto_noise_check.isChecked() or (self.noise_clip is not None and self.noise_confirmed)
+
+    def _denoise_snapshot(self):
+        automatic = self.auto_noise_check.isChecked()
+        return (automatic, self.denoise_spin.value(), None if automatic else id(self.noise_clip),
+                True if automatic else self.noise_confirmed)
+
+    def _cache_denoise(self, info, analysis, strength, automatic):
+        if self._enhanced_from_denoise:
+            self._clear_enhancement()
+        self.denoised_clip, self.denoised_analysis = info.clip, analysis
+        mode = (f'自动估计（{info.estimated_frames}帧，可能含人声）' if info.estimated_frames
+                else '自动估计（0%旁路）') if automatic else '参考底噪'
+        details = f'去噪：{mode} · 强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
+        if info.clipped_samples:
+            details += f' · {info.clipped_samples} 个越界样本已限幅'
+        self.denoise_status_label.setText(details)
 
     def start_denoise(self):
         if self.occupied:
@@ -40,13 +59,7 @@ class ProcessingController:
                 self._status('输入或参数已变化，本次去噪结果已丢弃，请重新处理。')
                 return
             info, analysis = result
-            self.denoised_clip, self.denoised_analysis = info.clip, analysis
-            mode = (f'自动估计（{info.estimated_frames}帧，可能含人声）' if info.estimated_frames
-                    else '自动估计（0%旁路）') if automatic else '参考底噪'
-            details = f'去噪：{mode} · 强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
-            if info.clipped_samples:
-                details += f' · {info.clipped_samples} 个越界样本已限幅'
-            self.denoise_status_label.setText(details)
+            self._cache_denoise(info, analysis, strength, automatic)
             self._set_stage(1)
             self._status('去噪完成；可切换原声/去噪试听，并保存当前阶段 WAV。')
 
@@ -58,11 +71,16 @@ class ProcessingController:
 
     def _invalidate_denoise(self):
         self.denoised_clip = self.denoised_analysis = None
+        if self._enhanced_from_denoise:
+            self._clear_enhancement()
         self.denoise_status_label.setText('去噪：待处理（输入或参数变化后需重新运行）')
-        self._set_stage(0)
+        self._set_stage(2 if self.stages.checkedId() == 2 and self.enhanced_clip is not None else 0)
 
     def select_stage(self, stage):
-        if self.occupied or stage not in (0, 1):
+        if self.occupied or stage not in (0, 1, 2):
+            return
+        if stage == 2 and self.enhanced_clip is None:
+            self._error('增强结果尚未生成或已失效，请重新增强。')
             return
         if stage == 1 and self.denoised_clip is None:
             self._error('去噪结果尚未生成或已失效，请重新去噪。')
@@ -77,10 +95,10 @@ class ProcessingController:
         if self.clip is not None:
             self.file_label.setText(f'{self.clip.name}  |  频谱/语谱显示至 '
                                     f'{min(8000, self.clip.sample_rate/2):g} Hz  |  当前阶段：{self.stage_name}')
-        if self.denoised_clip is None:
+        if self.denoised_clip is None and self.enhanced_clip is None:
             self.plots.clear_result()
         else:
-            analysis = self.denoised_analysis if stage == 1 else self.analysis
+            analysis = {0:self.analysis, 1:self.denoised_analysis, 2:self.enhanced_analysis}[stage]
             self.plots.set_result(selected, analysis, self.stage_name)
         self._position(0)
         self._controls()
@@ -88,10 +106,11 @@ class ProcessingController:
     def reset_processing(self):
         if self.occupied:
             return
+        self._reset_enhancement_settings()
         self.denoise_spin.setValue(60)
         self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
-        self._status('已恢复自动估计与去噪强度60%，清除去噪结果；原声与参考底噪保留。')
+        self._status('已恢复默认参数与增强旁路，清除处理结果；原声与参考底噪保留。')
 
     def _processing_controls(self):
         idle = not self.occupied
@@ -105,3 +124,4 @@ class ProcessingController:
         self.stages.button(0).setEnabled(idle and self.clip is not None)
         self.stages.button(1).setEnabled(idle and self.denoised_clip is not None)
         self.save_button.setText(f'保存{self.stage_name} WAV')
+        self._enhancement_controls()

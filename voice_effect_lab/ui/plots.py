@@ -21,7 +21,7 @@ class AnalysisPlots(FigureCanvasQTAgg):
 
     def _style(self):
         self._style_column(0, '原声', '请导入 WAV')
-        self._style_column(1, '去噪（待处理）', '载入原声后可直接去噪，也可提供底噪参考')
+        self._style_column(1, '处理结果（待处理）', '载入原声后可直接去噪或增强')
 
     def _style_column(self, col, name, message=''):
         titles = ['波形', '幅度频谱', '语谱图']
@@ -53,7 +53,7 @@ class AnalysisPlots(FigureCanvasQTAgg):
         self.draw_idle()
 
     def clear_result(self):
-        self._style_column(1, '去噪（待处理）', '执行去噪后对比；输入、模式或参数变化后需重新处理')
+        self._style_column(1, '处理结果（待处理）', '去噪或增强后对比；输入、模式或参数变化后需重新处理')
         self.draw_idle()
 
     def set_result(self, clip, result, name='去噪'):
