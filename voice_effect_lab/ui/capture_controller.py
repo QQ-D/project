@@ -1,5 +1,7 @@
 """主窗口的采集与底噪状态，独立于界面布局。"""
-from ..audio.data import AudioError
+from PyQt5.QtWidgets import QFileDialog
+
+from ..audio.data import AudioError, load_wav
 from ..audio.noise import extract_noise
 from ..audio.recorder import AudioRecorder, RecordingError
 from ..analysis import analyze
@@ -104,24 +106,48 @@ class CaptureController:
             self.noise_clip = None
             self.noise_confirmed = False
             self._noise_kind = None
-        elif self.noise_clip is not None and source_kind == 'import':
+        elif self.noise_clip is not None and (source_kind == 'import' or self._noise_kind == 'file'):
             self.noise_confirmed = False
         self._noise_status()
 
-    def _store_noise(self, clip, kind):
+    def _store_noise(self, clip, kind, confirmed=True):
         self.noise_clip = clip
-        self.noise_confirmed = True
+        self.noise_confirmed = confirmed
         self._noise_kind = kind
         self._invalidate_denoise()
         self._noise_status()
         self._controls()
 
+    def load_noise_path(self, path):
+        if self.occupied or not path:
+            return
+
+        def load():
+            clip = load_wav(path)
+            if clip.duration < .1:
+                raise AudioError('底噪文件至少需要 0.10 秒。')
+            return clip
+
+        def apply(clip):
+            self._store_noise(clip, 'file', confirmed=False)
+            self._status('底噪文件已导入；确认只含噪声且与原声环境匹配后，点击“确认底噪适用”。')
+
+        self._job(load, apply, '正在读取底噪 WAV，原声保持不变…')
+
+    def _choose_noise_file(self):
+        if self.occupied:
+            return
+        path, _ = QFileDialog.getOpenFileName(self, '导入底噪 WAV', '', 'WAV 音频 (*.wav *.WAV)')
+        if path:
+            self.load_noise_path(path)
+
     def _noise_status(self):
         if self.noise_clip is None:
-            self.noise_status_label.setText('底噪：尚未采集或选取')
+            self.noise_status_label.setText('底噪：尚未采集、导入或选取')
         else:
-            origin = '麦克风' if self._noise_kind == 'microphone' else '原声选段'
-            state = '已确认' if self.noise_confirmed else '待确认环境是否匹配'
+            origin = {'microphone': '麦克风', 'selection': '原声选段',
+                      'file': f'文件 {self.noise_clip.name}'}[self._noise_kind]
+            state = '已确认' if self.noise_confirmed else '待确认纯噪声与环境匹配'
             self.noise_status_label.setText(f'底噪：{self.noise_clip.duration:.2f} s · '
                                           f'{self.noise_clip.sample_rate} Hz · {origin} · {state}')
 
@@ -178,6 +204,7 @@ class CaptureController:
         self.end_record_button.setEnabled(recording)
         self.cancel_capture_button.setEnabled(recording)
         self.noise_button.setEnabled(not self.occupied)
+        self.import_noise_button.setEnabled(not self.occupied)
         self.select_noise_button.setEnabled(not self.occupied and self.clip is not None)
         self.input_combo.setEnabled(not self.occupied)
         self.sample_rate_combo.setEnabled(not self.occupied)

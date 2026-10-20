@@ -98,6 +98,22 @@ def main():
         QTest.qWait(100)
         assert window.grab().save(str(artifacts/'第三阶段实际界面.png'))
         metrics['gui_flow'] = '真实导入→确认选段→去噪→导出核对→阶段切换→截图：通过；未启动音频设备'
+        # 无麦克风：独立WAV参考同样进入实际后台导入、确认和去噪流程。
+        window.load_noise_path(samples_dir/noise.name)
+        wait_idle()
+        assert window.clip is original
+        assert not window.noise_confirmed and window.denoised_clip is None
+        window.confirm_noise_button.click()
+        window.denoise_button.click()
+        wait_idle()
+        assert window.current_clip is window.denoised_clip
+        assert window.current_clip.sample_rate == rate
+        metrics['imported_reference_output_snr_db'] = snr(clean, window.current_clip.samples)
+        assert metrics['imported_reference_output_snr_db']-metrics['input_snr_db'] > 3
+        window.plots.draw()
+        QTest.qWait(100)
+        assert window.grab().save(str(artifacts/'底噪导入实际界面.png'))
+        metrics['imported_reference_gui_flow'] = '独立底噪WAV导入→确认纯噪声适用→去噪→截图：通过；无需麦克风'
         (artifacts/'第三阶段验收数据.json').write_text(json.dumps(metrics, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
         print(json.dumps(metrics, ensure_ascii=False, indent=2))
     finally:

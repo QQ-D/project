@@ -21,7 +21,7 @@ class AnalysisPlots(FigureCanvasQTAgg):
 
     def _style(self):
         self._style_column(0, '原声', '请导入 WAV')
-        self._style_column(1, '去噪（待处理）', '请采集或选取底噪，执行去噪后对比')
+        self._style_column(1, '去噪（待处理）', '请导入、采集或选取底噪，执行去噪后对比')
 
     def _style_column(self, col, name, message=''):
         titles = ['波形', '幅度频谱', '语谱图']

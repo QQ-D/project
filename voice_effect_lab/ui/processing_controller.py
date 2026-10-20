@@ -23,7 +23,7 @@ class ProcessingController:
             self._error('请先导入或录制原声。')
             return
         if self.noise_clip is None or not self.noise_confirmed:
-            self._error('请先采集或选取底噪，并确认它适用于当前原声。')
+            self._error('请先导入、采集或选取纯底噪，并确认它适用于当前原声。')
             return
         source, noise, strength = self.clip, self.noise_clip, self.denoise_spin.value()
 
