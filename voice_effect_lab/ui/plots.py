@@ -1,12 +1,10 @@
 """仅显示真实缓存分析结果；未实现的处理结果保持空白。"""
-from matplotlib import colormaps, colors, rcParams
+from matplotlib import colormaps, colors
 from matplotlib.figure import Figure
 from matplotlib.cm import ScalarMappable
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
-rcParams['font.family'] = 'sans-serif'
-rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'Microsoft YaHei', 'SimHei', 'WenQuanYi Zen Hei', 'DejaVu Sans']
-rcParams['axes.unicode_minus'] = False
+from . import chart_style  # 所有图表使用同一中文字体配置。
 
 
 class AnalysisPlots(FigureCanvasQTAgg):

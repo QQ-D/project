@@ -40,7 +40,7 @@ def load_wav(path):
     path = Path(path)
     try:
         if path.stat().st_size > 128 * 1024 * 1024:
-            raise AudioError('第一阶段暂支持 128 MiB 以内的 WAV 文件。')
+            raise AudioError('当前版本支持 128 MiB 以内的 WAV 文件。')
         with warnings.catch_warnings():
             # SciPy 对截断 WAV 默认只发警告并返回部分音频；不能将其当作成功导入。
             warnings.filterwarnings('error', category=wavfile.WavFileWarning,
@@ -55,7 +55,7 @@ def load_wav(path):
     if rate <= 0:
         raise AudioError('WAV 采样率必须为正整数。')
     if len(data) / rate > 300:
-        raise AudioError('第一阶段暂支持 300 秒以内的音频。')
+        raise AudioError('当前版本支持 300 秒以内的音频。')
     channels = data.shape[1] if data.ndim == 2 else 1
     if data.dtype == np.uint8:
         samples = (data.astype(np.float32) - 128) / 128

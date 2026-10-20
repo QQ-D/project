@@ -14,6 +14,7 @@ from ..audio.player import AudioPlayer, PlaybackError
 from ..analysis import analyze
 from .worker import Job
 from .plots import AnalysisPlots
+from .capture_controller import CaptureController
 
 
 STYLE = '''
@@ -78,12 +79,12 @@ def _parameter(layout, label, low, high, value, suffix='', decimals=2):
     _row(layout, text, slider, spin)
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, CaptureController):
     loaded = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, recorder=None):
         super().__init__(parent)
-        self.setWindowTitle('智能人声音效台 · 第一阶段')
+        self.setWindowTitle('智能人声音效台 · 第二阶段')
         self.resize(1500, 1040)
         self.setMinimumSize(1080, 720)
         self.setStyleSheet(STYLE)
@@ -99,6 +100,7 @@ class MainWindow(QMainWindow):
         self.player.state_changed.connect(self._playback_state)
         self.player.position_changed.connect(self._position)
         self.player.failed.connect(self._error)
+        self._init_capture(recorder)
         self._build()
         self._controls()
 
@@ -111,7 +113,7 @@ class MainWindow(QMainWindow):
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('第一阶段 · WAV 导入 / 真实分析 / 播放与保存'))
+        header.addWidget(QLabel('第二阶段 · 麦克风录音 / 底噪采集 / 选段确认'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
@@ -168,7 +170,7 @@ class MainWindow(QMainWindow):
         splitter.setSizes([425, 1050])
         tabs.addTab(basic, '基础工作台 · 必做')
         tabs.addTab(self._extensions(), '扩展功能 · 选做（未实现）')
-        self.status_label = QLabel('状态：等待导入 WAV。录音、去噪、增强和音效将在后续阶段接入。')
+        self.status_label = QLabel('状态：可以录音、导入 WAV 或采集底噪。去噪、增强和音效将在后续阶段接入。')
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet('color: #1771cb; padding: 6px;')
         outer.addWidget(self.status_label)
@@ -176,16 +178,28 @@ class MainWindow(QMainWindow):
     def _source_panel(self, left):
         group, layout = _group('01  音频采集与管理')
         self.record_button = _button('开始录音')
-        self.record_button.setEnabled(False)
-        self.record_button.setToolTip('录音功能将在下一阶段接入。')
-        end = _button('结束录音')
-        end.setEnabled(False)
+        self.record_button.clicked.connect(lambda: self.start_recording('voice'))
+        self.end_record_button = _button('结束录音')
+        self.end_record_button.clicked.connect(self.stop_recording)
         self.import_button = _button('导入 WAV', True)
         self.import_button.clicked.connect(self._choose_load)
-        _row(layout, self.record_button, end, self.import_button)
+        _row(layout, self.record_button, self.end_record_button, self.import_button)
         self.info_label = QLabel('采样率：—    时长：—')
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
+        self.input_combo = QComboBox()
+        self.input_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.input_combo.setMinimumContentsLength(14)
+        self.input_combo.addItem('系统默认输入', None)
+        for device in QAudioDeviceInfo.availableDevices(QAudio.AudioInput):
+            self.input_combo.addItem(device.deviceName(), device.deviceName())
+        self.input_combo.currentIndexChanged.connect(self._choose_input)
+        _row(layout, QLabel('输入设备'), self.input_combo)
+        self.sample_rate_combo = QComboBox()
+        for rate in [16000, 44100, 48000]:
+            self.sample_rate_combo.addItem(f'{rate} Hz', rate)
+        self.sample_rate_combo.setCurrentIndex(1)
+        _row(layout, QLabel('目标采样率'), self.sample_rate_combo)
         self.output_combo = QComboBox()
         self.output_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.output_combo.setMinimumContentsLength(14)
@@ -198,10 +212,30 @@ class MainWindow(QMainWindow):
         left.addWidget(group)
 
     def _future_panels(self, left):
-        group, layout = _group('02  环境底噪与一键去噪 · 待实现', True)
-        _row(layout, _button('采集底噪'), _button('选取噪声段'), _button('一键去噪'))
-        layout.addWidget(QCheckBox('使用去噪结果'))
-        _parameter(layout, '去噪强度', 0, 100, 60, ' %', 0)
+        group, layout = _group('02  环境底噪采集 · 去噪算法待接入')
+        self.noise_button = _button('采集底噪')
+        self.noise_button.clicked.connect(lambda: self.start_recording('noise'))
+        self.select_noise_button = _button('选取噪声段')
+        self.select_noise_button.clicked.connect(self._choose_noise)
+        self.denoise_button = _button('一键去噪')
+        self.denoise_button.setEnabled(False)
+        self.denoise_button.setToolTip('下一阶段接入谱减去噪。')
+        _row(layout, self.noise_button, self.select_noise_button, self.denoise_button)
+        self.noise_status_label = QLabel('底噪：尚未采集或选取')
+        self.noise_status_label.setWordWrap(True)
+        layout.addWidget(self.noise_status_label)
+        self.confirm_noise_button = _button('确认沿用底噪')
+        self.confirm_noise_button.clicked.connect(self.confirm_noise)
+        self.clear_noise_button = _button('清除底噪')
+        self.clear_noise_button.clicked.connect(self.clear_noise)
+        _row(layout, self.confirm_noise_button, self.clear_noise_button)
+        future = QWidget()
+        future_layout = QVBoxLayout(future)
+        future_layout.setContentsMargins(0, 0, 0, 0)
+        future_layout.addWidget(QCheckBox('使用去噪结果'))
+        _parameter(future_layout, '去噪强度', 0, 100, 60, ' %', 0)
+        future.setEnabled(False)
+        layout.addWidget(future)
         left.addWidget(group)
         group, layout = _group('03  声音增强 · 待实现', True)
         _row(layout, QCheckBox('启用增强'), QCheckBox('峰值归一化（0.95）'))
@@ -224,6 +258,11 @@ class MainWindow(QMainWindow):
         left.addWidget(group)
 
     def _listen_panel(self, left):
+        self.capture_label = QLabel('未在采集 · 语音最长 300 s / 底噪约 1.5 s')
+        self.capture_label.setWordWrap(True)
+        self.cancel_capture_button = _button('取消采集')
+        self.cancel_capture_button.clicked.connect(self.cancel_recording)
+        _row(left, self.capture_label, self.cancel_capture_button)
         group, layout = _group('06  对比试听')
         self.stages = QButtonGroup(self)
         row = QHBoxLayout()
@@ -241,7 +280,7 @@ class MainWindow(QMainWindow):
         self.stop_button = _button('■ 停止')
         self.play_button.clicked.connect(self._play)
         self.pause_button.clicked.connect(self.player.pause)
-        self.stop_button.clicked.connect(self.player.stop)
+        self.stop_button.clicked.connect(self._stop_action)
         _row(layout, self.play_button, self.pause_button, self.stop_button)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
@@ -268,18 +307,19 @@ class MainWindow(QMainWindow):
         return page
 
     def _controls(self):
-        available = self.clip is not None and not self.busy
-        self.import_button.setEnabled(not self.busy)
-        self.demo_button.setEnabled(not self.busy)
-        self.output_combo.setEnabled(not self.busy)
+        available = self.clip is not None and not self.occupied
+        self.import_button.setEnabled(not self.occupied)
+        self.demo_button.setEnabled(not self.occupied)
+        self.output_combo.setEnabled(not self.occupied)
         self.play_button.setEnabled(available and self.player.state != 'playing')
         self.play_button.setText('▶ 继续' if self.player.state == 'paused' else '▶ 播放')
         self.pause_button.setEnabled(available and self.player.state == 'playing')
         self.stop_button.setEnabled(available and self.player.state in ('playing', 'paused', 'finished'))
         self.save_button.setEnabled(available)
+        self._capture_controls()
 
     def _job(self, function, result, message):
-        if self.busy:
+        if self.occupied:
             return
         self.busy = True
         self.last_error = ''
@@ -301,18 +341,19 @@ class MainWindow(QMainWindow):
             self.close()
 
     def load_path(self, path):
-        if self.busy or not path:
+        if self.occupied or not path:
             return
         def load():
             clip = load_wav(path)
             return clip, analyze(clip)
         self._job(load, self._loaded, '正在读取 WAV 并计算真实分析图…')
 
-    def _loaded(self, result):
+    def _loaded(self, result, source_kind='import'):
         self.clip, self.analysis = result
+        self._source_replaced(source_kind)
         self.player.set_clip(self.clip)
         self.info_label.setText(f'采样率：{self.clip.sample_rate} Hz    时长：{self.clip.duration:.2f} s\n'
-                                f'原文件 {self.clip.source_channels} 声道 → 当前单声道')
+                                f'源音频 {self.clip.source_channels} 声道 → 当前单声道')
         self.file_label.setText(f'{self.clip.name}  |  频谱/语谱显示至 {min(8000, self.clip.sample_rate/2):g} Hz  |  当前阶段：原声')
         self.plots.set_source(self.clip, self.analysis)
         self._position(0)
@@ -324,7 +365,7 @@ class MainWindow(QMainWindow):
         self.load_path(path)
 
     def save_to(self, path):
-        if self.clip is None or self.busy or not path:
+        if self.clip is None or self.occupied or not path:
             return
         clip = self.clip
         self._job(lambda: save_wav(path, clip),
@@ -379,6 +420,8 @@ class MainWindow(QMainWindow):
         self.status_label.setText('错误：'+message)
 
     def closeEvent(self, event):
+        self.recorder.close()
+        self._recording_target = None
         if self.busy:
             self._close_pending = True
             self._status('正在完成文件任务，完成后自动关闭…')
