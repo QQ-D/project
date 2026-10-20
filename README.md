@@ -1,6 +1,6 @@
 # 智能人声音效台
 
-[GitHub 仓库](https://github.com/QQ-D/-)
+[GitHub 仓库](https://github.com/QQ-D/project)
 
 数字信号处理综合实验，Python 桌面版。界面按已确认的 [v2 设计](design/界面设计说明.md) 逐步实现。
 
