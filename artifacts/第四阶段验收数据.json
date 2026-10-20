@@ -1,0 +1,22 @@
+{
+  "source": "仓库合成测试音，非真人录音",
+  "sample_rate": 44100,
+  "duration_seconds": 6.2,
+  "peak_by_stage": {
+    "原声": 0.22650146484375,
+    "去噪": 0.21661542356014252,
+    "增强": 0.7124999761581421
+  },
+  "normalization_target": 0.95,
+  "gain": 0.75,
+  "expected_output_peak": 0.7125,
+  "clarity_percent": 40,
+  "extra_eq_db": {
+    "low": -2,
+    "mid": 1,
+    "high": -1
+  },
+  "raw_input_enhancement_peak": 0.7124999761581421,
+  "flow": "原声增强→勾选去噪输入→生成去噪+增强→三阶段切换及导出核对→截图：通过",
+  "scope": "未启动麦克风或扬声器；不将响度/EQ变化当作语音质量提升证明"
+}
