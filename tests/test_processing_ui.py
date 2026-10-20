@@ -31,6 +31,7 @@ def process(app, window):
 def test_denoise_requires_original_and_confirmed_reference(app, tmp_path):
     window, _ = prepare_window(app, tmp_path)
     try:
+        window.auto_noise_check.setChecked(False)  # 手动参考模式仍需确认底噪。
         assert not window.denoise_button.isEnabled()
         window.start_denoise()
         assert window.last_error

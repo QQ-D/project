@@ -72,6 +72,26 @@ def main():
         window.load_path(path)
         wait_idle()
         original = window.clip
+        # 默认自动模式：只载入原声，直接执行去噪，不提供任何底噪参考。
+        assert window.auto_noise_check.isChecked() and window.noise_clip is None
+        window.denoise_button.click()
+        wait_idle()
+        automatic = window.current_clip
+        assert automatic is window.denoised_clip
+        assert window.clip is original and window.noise_clip is None
+        metrics['automatic_output_snr_db'] = snr(clean, automatic.samples)
+        metrics['automatic_improvement_db'] = metrics['automatic_output_snr_db']-metrics['input_snr_db']
+        assert metrics['automatic_improvement_db'] > 3
+        automatic_path = artifacts/'自动去噪_合成输出.wav'
+        window.save_to(automatic_path)
+        wait_idle()
+        saved_rate, saved = wavfile.read(automatic_path)
+        assert saved_rate == rate
+        np.testing.assert_allclose(saved/32768, automatic.samples, atol=1/32768)
+        window.plots.draw()
+        QTest.qWait(100)
+        assert window.grab().save(str(artifacts/'自动去噪实际界面.png'))
+        metrics['automatic_gui_flow'] = '只导入原声→直接自动去噪→导出核对→截图：通过；未提供底噪，未启动音频设备'
         assert window.set_noise_segment(0, .35, confirmed=True)
         window.denoise_button.click()
         wait_idle()

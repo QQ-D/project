@@ -22,23 +22,28 @@ class ProcessingController:
         if self.clip is None:
             self._error('请先导入或录制原声。')
             return
-        if self.noise_clip is None or not self.noise_confirmed:
+        automatic = self.auto_noise_check.isChecked()
+        if not automatic and (self.noise_clip is None or not self.noise_confirmed):
             self._error('请先导入、采集或选取纯底噪，并确认它适用于当前原声。')
             return
-        source, noise, strength = self.clip, self.noise_clip, self.denoise_spin.value()
+        source, strength = self.clip, self.denoise_spin.value()
+        noise = None if automatic else self.noise_clip
 
         def compute():
             result = spectral_subtract(source, noise, strength)
             return result, analyze(result.clip)
 
         def apply(result):
-            if (self.clip is not source or self.noise_clip is not noise
-                    or not self.noise_confirmed or self.denoise_spin.value() != strength):
+            if (self.clip is not source or self.denoise_spin.value() != strength
+                    or self.auto_noise_check.isChecked() != automatic
+                    or (not automatic and (self.noise_clip is not noise or not self.noise_confirmed))):
                 self._status('输入或参数已变化，本次去噪结果已丢弃，请重新处理。')
                 return
             info, analysis = result
             self.denoised_clip, self.denoised_analysis = info.clip, analysis
-            details = f'去噪：强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
+            mode = (f'自动估计（{info.estimated_frames}帧，可能含人声）' if info.estimated_frames
+                    else '自动估计（0%旁路）') if automatic else '参考底噪'
+            details = f'去噪：{mode} · 强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
             if info.clipped_samples:
                 details += f' · {info.clipped_samples} 个越界样本已限幅'
             self.denoise_status_label.setText(details)
@@ -46,6 +51,10 @@ class ProcessingController:
             self._status('去噪完成；可切换原声/去噪试听，并保存当前阶段 WAV。')
 
         self._job(compute, apply, '正在后台执行谱减去噪并生成对比图…')
+
+    def _noise_mode_changed(self):
+        self._invalidate_denoise()
+        self._noise_status()
 
     def _invalidate_denoise(self):
         self.denoised_clip = self.denoised_analysis = None
@@ -80,16 +89,19 @@ class ProcessingController:
         if self.occupied:
             return
         self.denoise_spin.setValue(60)
+        self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
-        self._status('已恢复去噪强度60%并清除去噪结果；原声与底噪保留。')
+        self._status('已恢复自动估计与去噪强度60%，清除去噪结果；原声与参考底噪保留。')
 
     def _processing_controls(self):
         idle = not self.occupied
-        can_process = idle and self.clip is not None and self.noise_clip is not None and self.noise_confirmed
+        can_process = idle and self.clip is not None and (self.auto_noise_check.isChecked()
+                      or (self.noise_clip is not None and self.noise_confirmed))
         self.denoise_button.setEnabled(can_process)
         self.process_button.setEnabled(can_process)
         self.reset_button.setEnabled(idle and self.clip is not None)
         self.denoise_parameters.setEnabled(idle)
+        self.auto_noise_check.setEnabled(idle)
         self.stages.button(0).setEnabled(idle and self.clip is not None)
         self.stages.button(1).setEnabled(idle and self.denoised_clip is not None)
         self.save_button.setText(f'保存{self.stage_name} WAV')

@@ -106,6 +106,7 @@ class CaptureController:
             self.noise_clip = None
             self.noise_confirmed = False
             self._noise_kind = None
+            self.auto_noise_check.setChecked(True)
         elif self.noise_clip is not None and (source_kind == 'import' or self._noise_kind == 'file'):
             self.noise_confirmed = False
         self._noise_status()
@@ -114,6 +115,7 @@ class CaptureController:
         self.noise_clip = clip
         self.noise_confirmed = confirmed
         self._noise_kind = kind
+        self.auto_noise_check.setChecked(False)
         self._invalidate_denoise()
         self._noise_status()
         self._controls()
@@ -142,7 +144,12 @@ class CaptureController:
             self.load_noise_path(path)
 
     def _noise_status(self):
-        if self.noise_clip is None:
+        if self.auto_noise_check.isChecked():
+            text = '底噪：自动估计，无需额外文件；估计帧可能含人声'
+            if self.noise_clip is not None:
+                text += '。已保留参考，可关闭自动模式后使用'
+            self.noise_status_label.setText(text)
+        elif self.noise_clip is None:
             self.noise_status_label.setText('底噪：尚未采集、导入或选取')
         else:
             origin = {'microphone': '麦克风', 'selection': '原声选段',
@@ -155,6 +162,7 @@ class CaptureController:
         if self.occupied or self.noise_clip is None:
             return
         self.noise_confirmed = True
+        self.auto_noise_check.setChecked(False)
         self._noise_status()
         self._controls()
         self._status('已确认沿用底噪；请确保它与当前语音来自相同噪声环境。')
@@ -165,6 +173,7 @@ class CaptureController:
         self.noise_clip = None
         self.noise_confirmed = False
         self._noise_kind = None
+        self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
         self._noise_status()
         self._controls()

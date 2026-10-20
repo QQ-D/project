@@ -117,7 +117,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('第三阶段 · 录音 / 底噪采集 / 谱减去噪 / 对比试听'))
+        header.addWidget(QLabel('第三阶段 · 录音 / 自动去噪 / 参考底噪 / 对比试听'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         self.process_button.clicked.connect(self.start_denoise)
         self.reset_button = _button('重置')
         self.reset_button.clicked.connect(self.reset_processing)
-        self.reset_button.setToolTip('恢复去噪强度60%并清除去噪结果，保留原声与底噪。')
+        self.reset_button.setToolTip('恢复自动估计和去噪强度60%并清除去噪结果，保留原声与参考底噪。')
         self.save_button = _button('保存原声 WAV')
         self.save_button.clicked.connect(self._choose_save)
         for widget in (self.process_button, self.reset_button, self.save_button):
@@ -176,7 +176,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         splitter.setSizes([425, 1050])
         tabs.addTab(basic, '基础工作台 · 必做')
         tabs.addTab(self._extensions(), '扩展功能 · 选做（未实现）')
-        self.status_label = QLabel('状态：导入或录制原声，再导入、采集或选取纯底噪，确认后可执行去噪。')
+        self.status_label = QLabel('状态：导入或录制原声后可直接去噪；也可选择底噪参考进行处理。')
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet('color: #1771cb; padding: 6px;')
         outer.addWidget(self.status_label)
@@ -218,7 +218,12 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         left.addWidget(group)
 
     def _future_panels(self, left):
-        group, layout = _group('02  底噪采集 / 导入 · 谱减去噪')
+        group, layout = _group('02  一键去噪 · 可选底噪参考')
+        self.auto_noise_check = QCheckBox('自动估计底噪（直接去噪）')
+        self.auto_noise_check.setChecked(True)
+        self.auto_noise_check.setToolTip('无需额外文件；从低能量帧估计背景谱，估计帧可能含人声。连续说话或复杂噪声建议使用匹配的底噪参考。')
+        self.auto_noise_check.toggled.connect(self._noise_mode_changed)
+        layout.addWidget(self.auto_noise_check)
         self.noise_button = _button('采集底噪')
         self.noise_button.clicked.connect(lambda: self.start_recording('noise'))
         self.import_noise_button = _button('导入底噪 WAV')
@@ -228,11 +233,11 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         self.select_noise_button.clicked.connect(self._choose_noise)
         self.denoise_button = _button('一键去噪')
         self.denoise_button.setEnabled(False)
-        self.denoise_button.setToolTip('使用已确认的底噪估计噪声功率谱，不修改原声。')
+        self.denoise_button.setToolTip('默认自动估计底噪；关闭自动模式时使用已确认的底噪参考。原声始终保留。')
         self.denoise_button.clicked.connect(self.start_denoise)
         _row(layout, self.noise_button, self.import_noise_button)
         _row(layout, self.select_noise_button, self.denoise_button)
-        self.noise_status_label = QLabel('底噪：尚未采集、导入或选取')
+        self.noise_status_label = QLabel('底噪：自动估计，无需额外文件；估计帧可能含人声')
         self.noise_status_label.setWordWrap(True)
         layout.addWidget(self.noise_status_label)
         self.confirm_noise_button = _button('确认底噪适用')
@@ -291,7 +296,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
             if i > 1:
                 radio.setToolTip('该处理阶段尚未实现。')
             elif i == 1:
-                radio.setToolTip('确认底噪并执行去噪后可试听；参数改变后需重新处理。')
+                radio.setToolTip('完成自动去噪或参考去噪后可试听；输入、模式或参数改变后需重新处理。')
             self.stages.addButton(radio, i)
             row.addWidget(radio)
         layout.addLayout(row)
@@ -379,7 +384,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController):
         self.file_label.setText(f'{self.clip.name}  |  频谱/语谱显示至 {min(8000, self.clip.sample_rate/2):g} Hz  |  当前阶段：原声')
         self.plots.set_source(self.clip, self.analysis)
         self._position(0)
-        self._status('原声已加载，可试听；请导入、采集或选取底噪，确认后执行去噪。')
+        self._status('原声已加载；自动模式可直接去噪，参考模式需先确认底噪适用。')
         self.loaded.emit()
 
     def load_demo(self):
