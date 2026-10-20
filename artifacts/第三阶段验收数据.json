@@ -1,0 +1,15 @@
+{
+  "description": "440/880Hz调幅谐波 + 独立白噪声，非真人语音；前0.4秒只有噪声",
+  "seed": 20261020,
+  "sample_rate": 16000,
+  "duration_seconds": 3.0,
+  "strength_percent": 60,
+  "input_snr_db": 6.657028366111433,
+  "independent_reference_output_snr_db": 15.164949990925145,
+  "algorithm_seconds": 0.0029787360108457506,
+  "independent_reference_improvement_db": 8.507921624813712,
+  "selected_reference_seconds": 0.35,
+  "selection_output_snr_db": 14.846601863009909,
+  "selection_improvement_db": 8.189573496898475,
+  "gui_flow": "真实导入→确认选段→去噪→导出核对→阶段切换→截图：通过；未启动音频设备"
+}
