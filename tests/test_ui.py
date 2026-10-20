@@ -107,3 +107,29 @@ def test_canvas_renders_chinese_without_missing_glyphs(app):
         window.plots.draw()
     assert not [w for w in caught if 'Glyph' in str(w.message)]
     window.close()
+
+
+def test_playback_fallback_updates_output_choice_without_stopping_playback(app, monkeypatch):
+    from test_player import install_desktop_outputs
+    from voice_effect_lab.audio import player as player_module
+    from voice_effect_lab.ui import main_window
+    install_desktop_outputs(monkeypatch, failed_names={'default'})
+    # GUI 与播放器看到同一组外部设备。
+    monkeypatch.setattr(main_window, 'QAudioDeviceInfo', player_module.QAudioDeviceInfo)
+    window = MainWindow()
+    try:
+        window.load_demo()
+        wait_idle(app, window)
+        window.play_button.click()
+        assert window.player.state == 'playing'
+        assert window.output_combo.currentData() == 'plughw:CARD=Analog,DEV=0'
+        assert 'Analog' in window.status_label.text()
+        assert not window.last_error
+        window.pause_button.click()
+        assert window.player.state == 'paused'
+        window.play_button.click()
+        assert window.player.state == 'playing'
+        window.stop_button.click()
+        assert window.player.state == 'stopped'
+    finally:
+        window.close()

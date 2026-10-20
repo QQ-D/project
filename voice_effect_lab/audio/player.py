@@ -59,15 +59,35 @@ def _default_output(rate, parent, device_name=None):
     return QAudioOutput(device, fmt, parent), fmt
 
 
+def _fallback_output_names():
+    """Qt ALSA 默认路由失效时，仅尝试有独立系统路由的声卡。
+
+    不遍历 HDMI/环绕输出：它们经常未连接，且可能把声音送到别的屏幕。
+    非 ALSA 后端没有这些名字，仍使用其系统默认路由与手动设备选择。
+    """
+    names = [d.deviceName() for d in QAudioDeviceInfo.availableDevices(QAudio.AudioOutput)]
+    candidates = []
+    default = QAudioDeviceInfo.defaultOutputDevice().deviceName()
+    for name in names:
+        if not name.startswith('sysdefault:CARD='):
+            continue
+        card = name.split('=', 1)[1]
+        for candidate in (f'plughw:CARD={card},DEV=0', name):
+            if candidate in names and candidate != default and candidate not in candidates:
+                candidates.append(candidate)
+    return candidates
+
+
 class AudioPlayer(QObject):
     state_changed = pyqtSignal(str)
     position_changed = pyqtSignal(int)
     failed = pyqtSignal(str)
+    output_device_changed = pyqtSignal(str)
 
     def __init__(self, parent=None, output_factory=None):
         super().__init__(parent)
         self.output_device_name = None
-        self._output_factory = output_factory or (lambda rate, parent: _default_output(rate, parent, self.output_device_name))
+        self._output_factory = output_factory
         self._clip = None
         self._output = None
         self._output_connected = False
@@ -75,6 +95,7 @@ class AudioPlayer(QObject):
         self._state = 'stopped'
         self._position = 0
         self._releasing = False
+        self._starting = False
         self._timer = QTimer(self)
         self._timer.setInterval(50)
         self._timer.timeout.connect(self._tick)
@@ -122,27 +143,48 @@ class AudioPlayer(QObject):
             self._timer.start()
             return
         self.stop()
-        try:
-            self._output, fmt = self._output_factory(self._clip.sample_rate, self)
-            payload = pcm_bytes(self._clip, fmt)
-            self._buffer = QBuffer(self)
-            self._buffer.setData(QByteArray(payload))
-            self._buffer.open(QIODevice.ReadOnly)
-            self._output.stateChanged.connect(self._output_state)
-            self._output_connected = True
-            self._set_state('playing')
-            # 极短音频可能在 start() 内完成并触发释放，保留局部引用。
-            output = self._output
-            output.start(self._buffer)
-            if output.error() != QAudio.NoError:
-                raise PlaybackError('输出设备启动失败，请检查设备是否被其他程序占用。')
-            if self._state == 'playing':
-                self._timer.start()
-        except Exception as exc:
-            self.stop()
-            if isinstance(exc, PlaybackError):
-                raise
-            raise PlaybackError(f'播放失败：{exc}') from exc
+        candidates = [self.output_device_name]
+        errors = []
+        # 显式选择的设备不擅自切换；系统默认失败时才发现备用路由。
+        automatic = self.output_device_name is None and self._output_factory is None
+        for name in candidates:
+            try:
+                self._starting = True
+                if self._output_factory is not None:
+                    self._output, fmt = self._output_factory(self._clip.sample_rate, self)
+                else:
+                    self._output, fmt = _default_output(self._clip.sample_rate, self, name)
+                payload = pcm_bytes(self._clip, fmt)
+                self._buffer = QBuffer(self)
+                self._buffer.setData(QByteArray(payload))
+                self._buffer.open(QIODevice.ReadOnly)
+                self._output.stateChanged.connect(self._output_state)
+                self._output_connected = True
+                self._set_state('playing')
+                # 极短音频可能在 start() 内完成并触发释放，保留局部引用。
+                output = self._output
+                output.start(self._buffer)
+                if output.error() != QAudio.NoError:
+                    raise PlaybackError(f'输出设备启动失败（Qt 错误码 {int(output.error())}）。')
+                if self._state == 'playing':
+                    self._timer.start()
+                if name != self.output_device_name:
+                    self.output_device_name = name
+                    self.output_device_changed.emit(name)
+                return
+            except Exception as exc:
+                self.stop()
+                errors.append(f'{name or "系统默认输出"}: {exc}')
+                if not automatic:
+                    if isinstance(exc, PlaybackError):
+                        raise
+                    raise PlaybackError(f'播放失败：{exc}') from exc
+                if name is None:
+                    candidates.extend(_fallback_output_names())
+            finally:
+                self._starting = False
+        raise PlaybackError('输出设备无法打开，请在“输出设备”下拉框选择已连接的扬声器或耳机。'
+                            + '；'.join(errors))
 
     def pause(self):
         if self._state == 'playing' and self._output is not None:
@@ -192,6 +234,8 @@ class AudioPlayer(QObject):
             self._set_state('finished')
             self.position_changed.emit(self._position)
         elif state == QAudio.StoppedState and self._output is not None and self._output.error() != QAudio.NoError:
+            if self._starting:
+                return  # start() 返回后统一处理，可回退且不重复发送错误。
             self.stop()
             self.failed.emit('音频输出中断，请检查设备连接或音频服务。')
 

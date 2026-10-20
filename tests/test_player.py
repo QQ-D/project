@@ -6,6 +6,7 @@ from PyQt5.QtMultimedia import QAudio, QAudioFormat
 
 from voice_effect_lab.audio.data import AudioClip
 from voice_effect_lab.audio.player import AudioPlayer, PlaybackError, pcm_bytes
+from voice_effect_lab.audio import player as player_module
 
 
 def audio_format(rate=8000, channels=1):
@@ -228,3 +229,112 @@ def test_removed_selected_device_is_reported_without_silent_fallback(app):
         player.play()
     assert player.state == 'stopped'
     player.close()
+
+
+def install_desktop_outputs(monkeypatch, failed_names=(), default_name='default'):
+    """仅替换设备枚举与硬件 I/O，保留真实播放器、格式协商和 PCM 缓存。"""
+    class Device:
+        def __init__(self, name): self.name = name
+        def deviceName(self): return self.name
+        def isNull(self): return False
+        def isFormatSupported(self, fmt): return True
+
+    class Devices:
+        @staticmethod
+        def defaultOutputDevice(): return Device(default_name)
+        @staticmethod
+        def availableDevices(mode):
+            return [Device(name) for name in [
+                'default', 'plughw:CARD=HDMI,DEV=3', 'hdmi:CARD=HDMI,DEV=0',
+                'plughw:CARD=Analog,DEV=0', 'sysdefault:CARD=Analog',
+            ]]
+
+    class DesktopOutput(DeviceOutput):
+        def __init__(self, device, fmt, parent):
+            super().__init__(fmt)
+            self.name = device.deviceName()
+            self.failed_start = False
+        def start(self, buffer):
+            if self.name in failed_names:
+                self.failed_start = True
+                self.stateChanged.emit(QAudio.StoppedState)
+            else:
+                super().start(buffer)
+        def error(self):
+            return QAudio.OpenError if self.failed_start else QAudio.NoError
+
+    monkeypatch.setattr(player_module, 'QAudioDeviceInfo', Devices)
+    monkeypatch.setattr(player_module, 'QAudioOutput', DesktopOutput)
+
+
+def test_broken_system_default_falls_back_and_can_pause_resume_finish(app, monkeypatch):
+    install_desktop_outputs(monkeypatch, failed_names={'default'})
+    player = AudioPlayer()
+    errors = []
+    player.failed.connect(errors.append)
+    clip = AudioClip(np.full(8000, .25), 8000, 'one second')
+    player.set_clip(clip)
+    try:
+        player.play()
+        assert player.state == 'playing'
+        assert player.output_device_name == 'plughw:CARD=Analog,DEV=0'
+        assert np.frombuffer(player._output.consume(2000), '<i2').tolist() == [8192]*2000
+        player.pause()
+        assert player.position_ms == 250
+        player.play()
+        player._output.consume(6000)
+        player._output.stateChanged.emit(QAudio.IdleState)
+        assert player.state == 'finished'
+        assert player.position_ms == 1000
+        assert not errors
+        assert player._clip is clip
+    finally:
+        player.close()
+
+
+def test_explicit_failed_output_does_not_switch_to_another_speaker(app, monkeypatch):
+    install_desktop_outputs(monkeypatch, failed_names={'plughw:CARD=HDMI,DEV=3'})
+    player = AudioPlayer()
+    player.set_output_device('plughw:CARD=HDMI,DEV=3')
+    player.set_clip(AudioClip(np.zeros(8000), 8000, 'one second'))
+    try:
+        with pytest.raises(PlaybackError, match='输出设备'):
+            player.play()
+        assert player.state == 'stopped'
+        assert player.output_device_name == 'plughw:CARD=HDMI,DEV=3'
+    finally:
+        player.close()
+
+
+def test_all_outputs_failed_has_one_actionable_error_and_no_live_buffer(app, monkeypatch):
+    install_desktop_outputs(monkeypatch, failed_names={
+        'default', 'plughw:CARD=Analog,DEV=0', 'sysdefault:CARD=Analog',
+    })
+    player = AudioPlayer()
+    errors = []
+    player.failed.connect(errors.append)
+    player.set_clip(AudioClip(np.zeros(8000), 8000, 'one second'))
+    try:
+        with pytest.raises(PlaybackError, match='输出设备.*下拉'):
+            player.play()
+        assert player.state == 'stopped'
+        assert player.position_ms == 0
+        assert player.output_device_name is None
+        assert player._output is None
+        assert player._buffer is None
+        assert not errors  # 同步启动失败只通过异常报告一次。
+    finally:
+        player.close()
+
+
+def test_working_default_keeps_system_route(app, monkeypatch):
+    install_desktop_outputs(monkeypatch)
+    player = AudioPlayer()
+    player.set_clip(AudioClip(np.zeros(8000), 8000, 'one second'))
+    try:
+        player.play()
+        assert player._output.name == 'default'
+        assert player.output_device_name is None
+        assert player.state == 'playing'
+    finally:
+        player.close()

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QThreadPool, pyqtSignal
+from PyQt5.QtCore import Qt, QThreadPool, QSignalBlocker, pyqtSignal
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QPushButton, QGroupBox, QScrollArea, QSplitter, QSlider, QDoubleSpinBox,
@@ -100,6 +100,7 @@ class MainWindow(QMainWindow, CaptureController):
         self.player.state_changed.connect(self._playback_state)
         self.player.position_changed.connect(self._position)
         self.player.failed.connect(self._error)
+        self.player.output_device_changed.connect(self._output_fallback)
         self._init_capture(recorder)
         self._build()
         self._controls()
@@ -203,11 +204,11 @@ class MainWindow(QMainWindow, CaptureController):
         self.output_combo = QComboBox()
         self.output_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.output_combo.setMinimumContentsLength(14)
-        self.output_combo.addItem('系统默认输出', None)
+        self.output_combo.addItem('自动选择（优先系统默认）', None)
         for device in QAudioDeviceInfo.availableDevices(QAudio.AudioOutput):
             self.output_combo.addItem(device.deviceName(), device.deviceName())
         self.output_combo.currentIndexChanged.connect(self._choose_output)
-        self.output_combo.setToolTip('默认输出不可用时，可选择实际连接的扬声器或声卡。')
+        self.output_combo.setToolTip('先尝试系统默认输出；失败时尝试独立声卡路由。也可手动选择扬声器或耳机。')
         _row(layout, QLabel('输出设备'), self.output_combo)
         left.addWidget(group)
 
@@ -397,6 +398,18 @@ class MainWindow(QMainWindow, CaptureController):
         self.player.set_output_device(self.output_combo.currentData())
         self.output_combo.setToolTip(self.output_combo.currentText())
         self._status('输出设备已切换，点击播放从头开始。')
+
+    def _output_fallback(self, name):
+        # 自动回退只更新展示，不能触发 _choose_output 再次停止刚开始的播放。
+        with QSignalBlocker(self.output_combo):
+            index = self.output_combo.findData(name)
+            if index < 0:
+                self.output_combo.addItem(name, name)
+                index = self.output_combo.count()-1
+            self.output_combo.setCurrentIndex(index)
+        self.output_combo.setToolTip(name)
+        self.last_error = ''
+        self._status(f'系统默认输出不可用，已切换至 {name} 播放。')
 
     def _playback_state(self, state):
         if hasattr(self, 'play_button'):
