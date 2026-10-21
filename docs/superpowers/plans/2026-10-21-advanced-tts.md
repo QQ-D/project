@@ -33,29 +33,36 @@
 
 Files: audio/transform.py, tests/test_transform.py。
 Interfaces: time_stretch(samples,rate,sample_rate)->ndarray，pitch_shift(samples,semitones,sample_rate)->ndarray；以AudioError报告非法输入/资源上限，保留输入不变，不在模块内限幅。最大中间样本32*1024*1024。
-- [ ] RED→GREEN：音调/时长独立、±12半音、.5/2语速、短音频/静音、精确中性、非法参数/资源限制。
-- [ ] 只运行本模块必要测试，主代理统一全套。
+- [x] RED→GREEN：音调/时长独立、±12半音、.5/2语速、短音频/静音、精确中性、非法参数/资源限制。
+- [x] 只运行本模块必要测试，主代理统一全套。
 
 ## Task 2: 中文TTS模块（并行）
 
 Files: audio/tts.py（可加隔离worker），ui/tts_controller.py、ui/tts_panel.py、tests/test_tts.py、tests/test_tts_ui.py。
 Interfaces: synthesize_chinese(text,speed=1.0)->AudioClip；tts_available()->(bool,str)；TtsController._init_tts(), _tts_controls(), build_tts_panel()->QWidget，tts_player/tts_clip/tts_analysis；使用host._job/_loaded/_error/_status/occupied。
-- [ ] RED→GREEN：实际中文非零音频、速度影响、输入/长度验证、引擎失败、异步失败/过期与独立缓存，试听/保存/送入工作台。
-- [ ] 系统合成使用retrieval而非扬声器；后端全局锁/隔离避免C库并发和生命周期错误；本机实际无声合成验证。
+- [x] RED→GREEN：实际中文非零音频、速度影响、输入/长度验证、引擎失败、异步失败/过期与独立缓存，试听/保存/送入工作台。
+- [x] 系统合成使用retrieval而非扬声器；后端全局锁/隔离避免C库并发和生命周期错误；本机实际无声合成验证。
 
 ## Task 3: 音量与其余高级DSP/界面
 
 Files: player.py, advanced.py, effects.py, ui/advanced_controls.py，main_window/effects_controller，相关测试。
-- [ ] RED→GREEN：实时音量/静音及重播持续；混响脉冲尾音、湿度0旁路；机械边带；压缩大/小信号与补偿；串联顺序/限幅/总长度。
-- [ ] 接通滚动高级区和排序，更新控件互斥/缓存/预设/重置与状态；TTS生命周期及音量整合。
-- [ ] 新GUI失败回归，完整测试通过。
+- [x] RED→GREEN：实时音量/静音及重播持续；混响脉冲尾音、湿度0旁路；机械边带；压缩大/小信号与补偿；串联顺序/限幅/总长度。
+- [x] 接通滚动高级区和排序，更新控件互斥/缓存/预设/重置与状态；TTS生命周期及音量整合。
+- [x] 新GUI失败回归，完整测试通过。
 
 ## Task 4: 验收/文档/审查/交付
 
-- [ ] 实际Qt：公开中文句生成→保存→送入原声→高级链路→试听缓存/导出核对、截图与JSON（不自动启动音频设备）。
-- [ ] 完整测试、compileall/Shell/diff/Markdown链接检查；一位新上下文整分支审查，重要发现RED→GREEN修复。
-- [ ] Markdown说明、合成产物、进度更新，按授权合并并推送main。
+- [x] 实际Qt：公开中文句生成→保存→送入原声→高级链路→试听缓存/导出核对、截图与JSON（不自动启动音频设备）。
+- [x] 完整测试、compileall/Shell/diff/Markdown链接检查；一位新上下文整分支审查，重要发现RED→GREEN修复。
+- [x] Markdown说明、合成产物、进度更新；Git交付沿用用户已授权的main快进合并与同步。
 
 ## 起点
 
 main 33d3e86，已验证248项；未跟踪voice/属于用户共享内容，保留且不读取。继续复用既有环境。
+
+## 执行记录
+
+- 主体提交`3d7e8dd`，完整361项通过（84.00秒）；TTS23项、独立变换52项、高级DSP25项、音量7项、主窗口6项均经失败后实现。
+- `scripts.verify_advanced_tts`实际Qt无声验收完成，生成四份公开中文合成/音效WAV、三张截图和JSON；最小1080×720检查通过。
+- 一位新上下文审查无未解决问题，80项独立窄测试通过。实际截图暴露首次TTS进度0/0问题，已加入先失败后通过的回归并刷新采用/清空后的时长。
+- 最终完整362项通过（87.04秒），实际Qt验收复跑通过；编译、Shell、diff和88个本地Markdown链接检查通过。

@@ -1,0 +1,72 @@
+{
+  "source": "公开自写中文测试句，eSpeak NG cmn离线合成，非真人录音",
+  "text": "欢迎来到数字信号处理实验。我们正在测试中文合成和房间混响。",
+  "tts_speed": 1,
+  "exports": [
+    {
+      "file": "中文TTS_公开测试句.wav",
+      "sample_rate": 22050,
+      "samples": 178866,
+      "seconds": 8.111836734693878,
+      "peak": 0.92474365234375,
+      "pcm16_max_error": 0.0
+    },
+    {
+      "file": "高级音效_中文合成加工.wav",
+      "sample_rate": 22050,
+      "samples": 168765,
+      "seconds": 7.65374149659864,
+      "peak": 0.3988572955131531,
+      "pcm16_max_error": 1.52587890625e-05
+    },
+    {
+      "file": "机械电音_中文合成.wav",
+      "sample_rate": 22050,
+      "samples": 178866,
+      "seconds": 8.111836734693878,
+      "peak": 0.9065650105476379,
+      "pcm16_max_error": 1.52587890625e-05
+    },
+    {
+      "file": "串联音效_中文合成.wav",
+      "sample_rate": 22050,
+      "samples": 197609,
+      "seconds": 8.961859410430838,
+      "peak": 0.995733380317688,
+      "pcm16_max_error": 1.52587890625e-05
+    }
+  ],
+  "advanced_parameters": {
+    "pitch_semitones": 2,
+    "tempo": 1.15,
+    "reverb_wet": 0.25,
+    "reverb_decay_seconds": 0.6,
+    "compression": "阈值−18dB，比率3:1，补偿3dB"
+  },
+  "chain_before": [
+    "pitch_tempo",
+    "telephone",
+    "modulation",
+    "compression",
+    "echo",
+    "reverb"
+  ],
+  "chain_after": [
+    "pitch_tempo",
+    "telephone",
+    "modulation",
+    "echo",
+    "compression",
+    "reverb"
+  ],
+  "chain_order_difference_rms": 0.009904981693957192,
+  "checks": [
+    "TTS生成/独立保存保留旧原声，送入才替换",
+    "高级音效的图形/播放缓存/PCM16导出一致",
+    "独立变调变速及混响尾音长度准确，机械调制保持长度",
+    "串联顺序改变后缓存失效，重新处理波形确实不同",
+    "两页试听音量共享，未修改原声",
+    "1080×720中文TTS关键按钮可见，高级参数可滚动到达"
+  ],
+  "scope": "未启动麦克风或扬声器，未联网；声音自然度和真人录音听感仍需人工试听"
+}

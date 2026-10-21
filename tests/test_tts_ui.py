@@ -165,6 +165,20 @@ def test_failed_regeneration_preserves_previous_valid_tts(app, monkeypatch):
         cleanup(app, host)
 
 
+def test_preview_duration_updates_when_generated_and_cleared(app, monkeypatch):
+    host, module = make_host(app, monkeypatch)
+    try:
+        clip = AudioClip(np.full(10000, .1), 8000, '公开合成时长测试')
+        monkeypatch.setattr(module, 'synthesize_chinese', lambda *args: clip)
+        host.tts_text.setPlainText('公开时长测试。')
+        generate(app, host)
+        assert host.tts_progress_label.text() == '0.00 / 1.25 s'
+        host.tts_text.setPlainText('已修改，请重新生成。')
+        assert host.tts_progress_label.text() == '0.00 / 0.00 s'
+    finally:
+        cleanup(app, host)
+
+
 def test_preview_uses_separate_player_and_selected_output_stops_main(app, monkeypatch):
     host, _ = make_host(app, monkeypatch)
     try:

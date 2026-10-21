@@ -40,6 +40,7 @@ class TtsController:
         self._tts_revision += 1
         self.tts_clip = self.tts_analysis = None
         self.tts_player.set_clip(None)
+        self._tts_position(0)
         self.tts_result_label.setText('文字或语速已变化，请重新生成。')
         self.tts_count_label.setText(f'{len(self.tts_text.toPlainText())} / {MAX_CHARACTERS} 字符')
         self._tts_controls()
@@ -65,6 +66,7 @@ class TtsController:
                 return
             self.tts_clip, self.tts_analysis = result
             self.tts_player.set_clip(self.tts_clip)
+            self._tts_position(0)
             self.tts_result_label.setText(f'合成完成 · {self.tts_clip.sample_rate} Hz · '
                                           f'{self.tts_clip.duration:.2f} s · 语速 {speed:.2f}×')
             self._status('中文合成完成，可独立试听、保存或点击送入工作台。')
