@@ -1,0 +1,2 @@
+# Preserve the upstream model configuration byte-for-byte (its hash is pinned).
+third_party/DeepFilterNet/models/DeepFilterNet3/config.ini -whitespace
