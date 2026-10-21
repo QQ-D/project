@@ -1,0 +1,15 @@
+{
+  "source": "仓库合成测试音，非真人录音",
+  "sample_rate": 44100,
+  "source_samples": 273420,
+  "source_seconds": 6.2,
+  "echo_count": 4,
+  "delay_seconds": 0.25,
+  "strength_and_decay": 0.4,
+  "last_echo_gain": 0.025600000000000005,
+  "output_samples": 317520,
+  "output_seconds": 7.2,
+  "single_echo_seconds": 6.45,
+  "flow": "扩展页共享参数→应用返回工作台→图/播放缓存/导出一致→关闭恢复单次：通过",
+  "scope": "未启动麦克风或扬声器，全部产物为合成音"
+}
