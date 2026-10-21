@@ -3,7 +3,7 @@ from PyQt5.QtCore import QSignalBlocker
 
 from ..audio.effects import EffectsSettings, apply_effects
 from ..audio.enhance import enhance_audio
-from ..audio.denoise import spectral_subtract
+from ..audio.denoising import denoise_audio
 from ..analysis import analyze
 
 
@@ -91,6 +91,7 @@ class EffectsController:
             return
         noise_snapshot = self._denoise_snapshot()
         automatic, strength = noise_snapshot[:2]
+        method = noise_snapshot[4]
         noise = None if automatic else self.noise_clip
         cached_noise, cached_enhancement = self.denoised_clip, self.enhanced_clip
 
@@ -100,7 +101,7 @@ class EffectsController:
             if use_noise:
                 upstream = cached_noise
                 if upstream is None:
-                    new_noise = spectral_subtract(source, noise, strength)
+                    new_noise = denoise_audio(source, noise, strength, method)
                     upstream = new_noise.clip
                     noise_analysis = analyze(upstream)
             if enhancement.enabled:

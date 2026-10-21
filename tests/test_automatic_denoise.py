@@ -121,6 +121,7 @@ def test_explicit_auto_mode_ignores_unconfirmed_imported_reference(app, tmp_path
         assert not window.noise_confirmed
         assert not window.auto_noise_check.isChecked()
         assert not window.denoise_button.isEnabled()
+        window.denoise_method_combo.setCurrentIndex(1)  # 这里验证保留的谱减对照。
         expected = spectral_subtract(window.clip, None, 60).clip
         window.auto_noise_check.setChecked(True)
         window.denoise_button.click()

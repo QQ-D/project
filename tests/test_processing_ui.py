@@ -158,7 +158,7 @@ def test_processing_failure_preserves_last_valid_result(app, tmp_path, monkeypat
         result = window.denoised_clip
         def fail(*args):
             raise RuntimeError('模拟计算失败')
-        monkeypatch.setattr(processing_controller, 'spectral_subtract', fail)
+        monkeypatch.setattr(processing_controller, 'denoise_audio', fail)
         window.start_denoise()
         wait_idle(app, window)
         assert '模拟计算失败' in window.last_error
@@ -172,11 +172,11 @@ def test_processing_failure_preserves_last_valid_result(app, tmp_path, monkeypat
 def block_processing(monkeypatch):
     from voice_effect_lab.ui import processing_controller
     release = Event()
-    original = processing_controller.spectral_subtract
+    original = processing_controller.denoise_audio
     def blocked(*args):
         assert release.wait(10), '测试未释放后台任务'
         return original(*args)
-    monkeypatch.setattr(processing_controller, 'spectral_subtract', blocked)
+    monkeypatch.setattr(processing_controller, 'denoise_audio', blocked)
     return release
 
 

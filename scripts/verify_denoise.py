@@ -57,6 +57,7 @@ def main():
     app.setStyle('Fusion')
     app.setFont(QFont('Noto Sans CJK SC', 10))
     window = MainWindow()
+    window.denoise_method_combo.setCurrentIndex(1)  # 历史谱减验收，明确选择对照算法。
 
     def wait_idle():
         deadline = time.monotonic()+20

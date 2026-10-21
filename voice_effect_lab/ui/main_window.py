@@ -223,9 +223,15 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def _future_panels(self, left):
         group, layout = _group('02  一键去噪 · 可选底噪参考')
+        self.denoise_method_combo = QComboBox()
+        self.denoise_method_combo.addItem('自适应维纳（默认）','wiener')
+        self.denoise_method_combo.addItem('功率谱减（对照）','spectral')
+        self.denoise_method_combo.setToolTip('维纳使用平滑增益与自动背景谱跟踪；谱减保留原算法作对照。强度越大可能越伤人声。')
+        self.denoise_method_combo.currentIndexChanged.connect(self._invalidate_denoise)
+        _row(layout, QLabel('去噪方法'), self.denoise_method_combo)
         self.auto_noise_check = QCheckBox('自动估计底噪（直接去噪）')
         self.auto_noise_check.setChecked(True)
-        self.auto_noise_check.setToolTip('无需额外文件；从低能量帧估计背景谱，估计帧可能含人声。连续说话或复杂噪声建议使用匹配的底噪参考。')
+        self.auto_noise_check.setToolTip('无需额外文件；从低能量帧初始化背景谱，维纳会继续跟踪。估计帧可能含人声，不能保证分离复杂噪声。')
         self.auto_noise_check.toggled.connect(self._noise_mode_changed)
         layout.addWidget(self.auto_noise_check)
         self.noise_button = _button('采集底噪')
