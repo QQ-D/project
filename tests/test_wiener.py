@@ -106,3 +106,15 @@ def test_dispatch_keeps_spectral_exact_and_rejects_unknown_method():
     np.testing.assert_array_equal(denoise(source,method='spectral').clip.samples,spectral_subtract(source).clip.samples)
     assert denoise(source).algorithm=='wiener'
     with pytest.raises(AudioError):denoise(source,method='unrecognized')
+
+
+@pytest.mark.parametrize('fundamental',[80,120])
+def test_dense_low_voice_harmonics_do_not_fade_with_time(fundamental):
+    rate=16000;t=np.arange(rate*12)/rate
+    clean=sum(.1/k*np.sin(2*np.pi*fundamental*k*t) for k in range(1,8))
+    source=AudioClip(clean,rate,'低基频持续谐波.wav')
+    out=apply(source).clip.samples
+    gains=[float(np.dot(out[start:start+rate],clean[start:start+rate])/np.dot(clean[start:start+rate],clean[start:start+rate]))
+           for start in [0,rate,rate*5,rate*11]]
+    assert min(gains)>.90,gains
+    assert max(gains)-min(gains)<.05,gains

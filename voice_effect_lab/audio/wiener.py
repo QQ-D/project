@@ -10,11 +10,17 @@ from time import perf_counter
 
 import numpy as np
 from scipy.fft import rfft, irfft
-from scipy.ndimage import median_filter
+from scipy.ndimage import percentile_filter
 from scipy.signal.windows import hann
 
 from .data import AudioClip, AudioError
 from .denoise import DenoiseResult, _automatic_noise_power, _reference_noise_power, _frame_batches
+
+
+def _protect_harmonic_peaks(power):
+    """只限制明显高于宽邻域谱底的峰，避免把有色背景整体压低。"""
+    floor=percentile_filter(power,percentile=20,size=31,mode='nearest')
+    return np.where(power>8*np.maximum(floor,1e-20), np.minimum(power,2*floor), power)
 
 
 def wiener_denoise(clip: AudioClip, noise_clip: AudioClip | None = None, strength=60) -> DenoiseResult:
@@ -46,6 +52,7 @@ def wiener_denoise(clip: AudioClip, noise_clip: AudioClip | None = None, strengt
     estimated=0
     if automatic:
         noise,estimated=_automatic_noise_power(clip.samples,size,hop,window)
+        noise=_protect_harmonic_peaks(noise)
     else:
         noise=_reference_noise_power(noise_clip,clip.sample_rate,size,hop,window)
     if not np.any(noise):
@@ -73,7 +80,7 @@ def wiener_denoise(clip: AudioClip, noise_clip: AudioClip | None = None, strengt
                 estimate=probability*noise+(1-probability)*power
                 noise=.8*noise+.2*estimate
                 if frame_index%8==0:
-                    noise=np.minimum(noise,median_filter(noise,size=9,mode='nearest'))
+                    noise=_protect_harmonic_peaks(noise)
             effective_noise=np.maximum(noise*noise_scale,1e-20)
             gamma=power/effective_noise
             xi=.98*previous/effective_noise+.02*np.maximum(gamma-1,0)
