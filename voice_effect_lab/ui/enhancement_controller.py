@@ -21,22 +21,35 @@ class EnhancementController:
             high_db=self.eq_high_spin.value())
 
     def _clear_enhancement(self):
+        if self._effects_from_enhancement:
+            self._clear_effects()
         self.enhanced_clip = self.enhanced_analysis = None
         self._enhanced_from_denoise = False
         self.enhance_status_label.setText('增强：待处理')
 
     def _invalidate_enhancement(self):
         self._clear_enhancement()
-        if self.stages.checkedId() == 2:
-            self._set_stage(1 if self.denoised_clip is not None else 0)
-        else:
-            self._controls()
+        self._set_stage(self._valid_stage())
 
     def start_processing(self):
-        if self.enhance_check.isChecked():
+        if self.effects_check.isChecked():
+            self.start_effects()
+        elif self.enhance_check.isChecked():
             self.start_enhance()
         else:
             self.start_denoise()
+
+    def _cache_enhancement(self, info, analysis, settings, use_denoise):
+        if self._effects_from_enhancement:
+            self._clear_effects()
+        self.enhanced_clip, self.enhanced_analysis = info.clip, analysis
+        self._enhanced_from_denoise = use_denoise
+        details = (f'增强：输入{"去噪" if use_denoise else "原声"} · '
+                   f'峰值 {info.input_peak:.3f} → {info.output_peak:.3f} · '
+                   f'增益 {settings.gain:.2f}× · {info.elapsed_seconds:.3f} s')
+        if info.clipped_samples:
+            details += f' · {info.clipped_samples}个样本限幅，可降低增益'
+        self.enhance_status_label.setText(details)
 
     def start_enhance(self):
         if self.occupied:
@@ -78,14 +91,7 @@ class EnhancementController:
             new_noise, noise_analysis, info, analysis = result
             if new_noise is not None:
                 self._cache_denoise(new_noise, noise_analysis, strength, automatic)
-            self.enhanced_clip, self.enhanced_analysis = info.clip, analysis
-            self._enhanced_from_denoise = use_denoise
-            details = (f'增强：输入{"去噪" if use_denoise else "原声"} · '
-                       f'峰值 {info.input_peak:.3f} → {info.output_peak:.3f} · '
-                       f'增益 {settings.gain:.2f}× · {info.elapsed_seconds:.3f} s')
-            if info.clipped_samples:
-                details += f' · {info.clipped_samples}个样本限幅，可降低增益'
-            self.enhance_status_label.setText(details)
+            self._cache_enhancement(info, analysis, settings, use_denoise)
             self._set_stage(2)
             self._status('增强完成，可切换原声/去噪/增强试听或保存当前阶段。')
 

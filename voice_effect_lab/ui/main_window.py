@@ -17,6 +17,7 @@ from .plots import AnalysisPlots
 from .capture_controller import CaptureController
 from .processing_controller import ProcessingController
 from .enhancement_controller import EnhancementController
+from .effects_controller import EffectsController
 
 
 STYLE = '''
@@ -82,12 +83,12 @@ def _parameter(layout, label, low, high, value, suffix='', decimals=2):
     return slider, spin
 
 
-class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController):
+class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController, EffectsController):
     loaded = pyqtSignal()
 
     def __init__(self, parent=None, recorder=None):
         super().__init__(parent)
-        self.setWindowTitle('智能人声音效台 · 第四阶段')
+        self.setWindowTitle('智能人声音效台 · 第五阶段')
         self.resize(1500, 1040)
         self.setMinimumSize(1080, 720)
         self.setStyleSheet(STYLE)
@@ -107,6 +108,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self._init_capture(recorder)
         self._init_processing()
         self._init_enhancement()
+        self._init_effects()
         self._build()
         self._controls()
 
@@ -119,7 +121,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('第四阶段 · 录音 / 去噪 / 归一化与均衡增强 / 三阶段对比'))
+        header.addWidget(QLabel('第五阶段 · 去噪 / 增强 / 倍率与音效 / 四阶段对比'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
@@ -141,11 +143,11 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         actions = QHBoxLayout()
         self.process_button = _button('开始处理', True)
         self.process_button.setEnabled(False)
-        self.process_button.setToolTip('启用增强时执行增强链路；否则单独去噪。“使用去噪结果”决定是否先去噪。')
+        self.process_button.setToolTip('依次执行所启用的音效/增强及可选去噪；未启用增强和音效时单独去噪。')
         self.process_button.clicked.connect(self.start_processing)
         self.reset_button = _button('重置')
         self.reset_button.clicked.connect(self.reset_processing)
-        self.reset_button.setToolTip('恢复默认参数、关闭增强，清空处理缓存；保留原声与参考底噪。')
+        self.reset_button.setToolTip('恢复默认参数、关闭增强与音效，清空处理缓存；保留原声与参考底噪。')
         self.save_button = _button('保存原声 WAV')
         self.save_button.clicked.connect(self._choose_save)
         for widget in (self.process_button, self.reset_button, self.save_button):
@@ -167,7 +169,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         side_layout.addLayout(actions)
         splitter.addWidget(sidebar)
         right, plots_layout = _group('处理前后可视化对比 · 原声始终保留')
-        self.file_label = QLabel('尚未导入音频；右列在去噪或增强后显示当前试听阶段。')
+        self.file_label = QLabel('尚未导入音频；右列显示当前试听的处理阶段。')
         self.file_label.setWordWrap(True)
         plots_layout.addWidget(self.file_label)
         self.plots = AnalysisPlots(right)
@@ -248,9 +250,9 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.clear_noise_button = _button('清除底噪')
         self.clear_noise_button.clicked.connect(self.clear_noise)
         _row(layout, self.confirm_noise_button, self.clear_noise_button)
-        self.use_denoise_check = QCheckBox('使用去噪结果作为增强输入')
-        self.use_denoise_check.setToolTip('勾选后增强使用有效去噪缓存；没有缓存时先去噪。未勾选时直接增强原声。')
-        self.use_denoise_check.toggled.connect(self._invalidate_enhancement)
+        self.use_denoise_check = QCheckBox('使用去噪结果作为后续处理输入')
+        self.use_denoise_check.setToolTip('勾选后增强/音效使用有效去噪缓存；没有缓存时先去噪。未勾选时从原声开始。')
+        self.use_denoise_check.toggled.connect(self._upstream_policy_changed)
         layout.addWidget(self.use_denoise_check)
         self.denoise_parameters = QWidget()
         parameters = QVBoxLayout(self.denoise_parameters)
@@ -265,14 +267,14 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         group, layout = _group('03  声音增强 · 归一化 / 清晰度 / 均衡')
         self.enhance_group = group
         self.enhance_check = QCheckBox('启用增强')
-        self.enhance_check.toggled.connect(self._invalidate_enhancement)
+        self.enhance_check.toggled.connect(self._enhancement_parameter_changed)
         layout.addWidget(self.enhance_check)
         self.enhance_parameters = QWidget()
         params = QVBoxLayout(self.enhance_parameters)
         params.setContentsMargins(0, 0, 0, 0)
         self.normalize_check = QCheckBox('峰值归一化（0.95），之后应用音量增益')
         self.normalize_check.setChecked(True)
-        self.normalize_check.toggled.connect(self._invalidate_enhancement)
+        self.normalize_check.toggled.connect(self._enhancement_parameter_changed)
         params.addWidget(self.normalize_check)
         self.gain_slider, self.gain_spin = _parameter(params, '音量增益', 0, 2, 1, '×')
         self.clarity_slider, self.clarity_spin = _parameter(params, '人声清晰度', 0, 100, 0, ' %', 0)
@@ -280,7 +282,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.eq_mid_slider, self.eq_mid_spin = _parameter(params, '中频增益', -12, 12, 0, ' dB')
         self.eq_high_slider, self.eq_high_spin = _parameter(params, '高频增益', -12, 12, 0, ' dB')
         for spin in (self.gain_spin,self.clarity_spin,self.eq_low_spin,self.eq_mid_spin,self.eq_high_spin):
-            spin.valueChanged.connect(self._invalidate_enhancement)
+            spin.valueChanged.connect(self._enhancement_parameter_changed)
         layout.addWidget(self.enhance_parameters)
         self.enhance_button = _button('一键增强', True)
         self.enhance_button.setToolTip('自动启用增强，从原声或选定的去噪输入生成新结果。')
@@ -290,17 +292,49 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.enhance_status_label.setWordWrap(True)
         layout.addWidget(self.enhance_status_label)
         left.addWidget(group)
-        group, layout = _group('04  一键音效预设 · 待实现', True)
+        self._effects_panels(left)
+
+    def _effects_panels(self, left):
+        group, layout = _group('04  一键音效预设')
+        self.presets_group = group
+        self.preset_buttons = {}
         grid = QGridLayout()
-        for index, label in enumerate(['原声', '磁性', '娃娃音', '大叔音', '电话音', '山谷回声', '自定义']):
-            grid.addWidget(_button(label), index//4, index % 4)
+        for index, name in enumerate(['原声', '磁性', '娃娃音', '大叔音', '电话音', '山谷回声', '自定义']):
+            button = _button(name)
+            button.setCheckable(True)
+            button.setChecked(name == '原声')
+            button.clicked.connect(lambda checked, label=name: self.select_preset(label))
+            self.preset_buttons[name] = button
+            grid.addWidget(button, index//4, index%4)
         layout.addLayout(grid)
+        self.preset_label = QLabel('当前预设：原声 · 音效旁路')
+        self.preset_label.setWordWrap(True)
+        layout.addWidget(self.preset_label)
         left.addWidget(group)
-        group, layout = _group('05  播放 / 回声参数 · 待实现', True)
-        for label, low, high, value, suffix in [
-            ('播放倍率', .5, 2, 1, '×'),
-            ('回声延时', 0, 1, .3, ' s'), ('回声强度', 0, .8, 0, '')]:
-            _parameter(layout, label, low, high, value, suffix)
+        group, layout = _group('05  倍率 / 电话滤波 / 回声')
+        self.effects_group = group
+        self.effects_check = QCheckBox('启用音效')
+        self.effects_check.toggled.connect(self._effect_parameter_changed)
+        layout.addWidget(self.effects_check)
+        self.effects_parameters = QWidget()
+        parameters = QVBoxLayout(self.effects_parameters)
+        parameters.setContentsMargins(0,0,0,0)
+        self.rate_slider, self.rate_spin = _parameter(parameters,'播放倍率',.5,2,1,'×')
+        self.rate_spin.setToolTip('同时改变语速和音高；实际样本与导出时长随倍率变化。')
+        self.telephone_check = QCheckBox('电话带通（约300–3400 Hz）')
+        self.telephone_check.toggled.connect(self._effect_parameter_changed)
+        parameters.addWidget(self.telephone_check)
+        self.echo_delay_slider, self.echo_delay_spin = _parameter(parameters,'回声延时',0,1,.3,' s')
+        self.echo_strength_slider, self.echo_strength_spin = _parameter(parameters,'回声强度',0,.8,0)
+        for spin in (self.rate_spin,self.echo_delay_spin,self.echo_strength_spin):
+            spin.valueChanged.connect(self._effect_parameter_changed)
+        layout.addWidget(self.effects_parameters)
+        self.effects_button = _button('应用音效',True)
+        self.effects_button.clicked.connect(self.start_effects)
+        layout.addWidget(self.effects_button)
+        self.effects_status_label = QLabel('音效：待处理')
+        self.effects_status_label.setWordWrap(True)
+        layout.addWidget(self.effects_status_label)
         left.addWidget(group)
 
     def _listen_panel(self, left):
@@ -316,8 +350,8 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
             radio = QRadioButton(label)
             radio.setChecked(i == 0)
             radio.setEnabled(i == 0)
-            if i > 2:
-                radio.setToolTip('该处理阶段尚未实现。')
+            if i == 3:
+                radio.setToolTip('应用音效后可试听；输入或参数改变后需重新处理。')
             elif i == 2:
                 radio.setToolTip('完成增强后可试听；增强参数或所依赖的输入变化后需重新处理。')
             elif i == 1:
@@ -409,7 +443,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.file_label.setText(f'{self.clip.name}  |  频谱/语谱显示至 {min(8000, self.clip.sample_rate/2):g} Hz  |  当前阶段：原声')
         self.plots.set_source(self.clip, self.analysis)
         self._position(0)
-        self._status('原声已加载，可直接去噪或一键增强；使用参考底噪时需先确认适用。')
+        self._status('原声已加载，可去噪、增强或加载预设后应用音效；原声始终保留。')
         self.loaded.emit()
 
     def load_demo(self):

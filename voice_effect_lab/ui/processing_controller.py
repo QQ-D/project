@@ -10,11 +10,11 @@ class ProcessingController:
 
     @property
     def current_clip(self):
-        return {0:self.clip, 1:self.denoised_clip, 2:self.enhanced_clip}.get(self.stages.checkedId())
+        return {0:self.clip, 1:self.denoised_clip, 2:self.enhanced_clip, 3:self.effected_clip}.get(self.stages.checkedId())
 
     @property
     def stage_name(self):
-        return {0:'原声', 1:'去噪', 2:'增强'}.get(self.stages.checkedId(), '原声')
+        return {0:'原声', 1:'去噪', 2:'增强', 3:'音效'}.get(self.stages.checkedId(), '原声')
 
     def _can_denoise(self):
         return self.auto_noise_check.isChecked() or (self.noise_clip is not None and self.noise_confirmed)
@@ -25,6 +25,8 @@ class ProcessingController:
                 True if automatic else self.noise_confirmed)
 
     def _cache_denoise(self, info, analysis, strength, automatic):
+        if self._effects_from_denoise:
+            self._clear_effects()
         if self._enhanced_from_denoise:
             self._clear_enhancement()
         self.denoised_clip, self.denoised_analysis = info.clip, analysis
@@ -71,13 +73,18 @@ class ProcessingController:
 
     def _invalidate_denoise(self):
         self.denoised_clip = self.denoised_analysis = None
+        if self._effects_from_denoise:
+            self._clear_effects()
         if self._enhanced_from_denoise:
             self._clear_enhancement()
         self.denoise_status_label.setText('去噪：待处理（输入或参数变化后需重新运行）')
-        self._set_stage(2 if self.stages.checkedId() == 2 and self.enhanced_clip is not None else 0)
+        self._set_stage(self._valid_stage())
 
     def select_stage(self, stage):
-        if self.occupied or stage not in (0, 1, 2):
+        if self.occupied or stage not in (0, 1, 2, 3):
+            return
+        if stage == 3 and self.effected_clip is None:
+            self._error('音效结果尚未生成或已失效，请重新应用音效。')
             return
         if stage == 2 and self.enhanced_clip is None:
             self._error('增强结果尚未生成或已失效，请重新增强。')
@@ -88,6 +95,13 @@ class ProcessingController:
         self._set_stage(stage)
         self._status(f'已选择{self.stage_name}，点击播放从头试听。')
 
+    def _valid_stage(self):
+        stages = {0:self.clip, 1:self.denoised_clip, 2:self.enhanced_clip, 3:self.effected_clip}
+        current = self.stages.checkedId()
+        if stages.get(current) is not None:
+            return current
+        return next((stage for stage in (2,1,0) if stages[stage] is not None), 0)
+
     def _set_stage(self, stage):
         self.stages.button(stage).setChecked(True)
         selected = self.current_clip
@@ -95,10 +109,10 @@ class ProcessingController:
         if self.clip is not None:
             self.file_label.setText(f'{self.clip.name}  |  频谱/语谱显示至 '
                                     f'{min(8000, self.clip.sample_rate/2):g} Hz  |  当前阶段：{self.stage_name}')
-        if self.denoised_clip is None and self.enhanced_clip is None:
+        if self.denoised_clip is None and self.enhanced_clip is None and self.effected_clip is None:
             self.plots.clear_result()
         else:
-            analysis = {0:self.analysis, 1:self.denoised_analysis, 2:self.enhanced_analysis}[stage]
+            analysis = {0:self.analysis, 1:self.denoised_analysis, 2:self.enhanced_analysis, 3:self.effected_analysis}[stage]
             self.plots.set_result(selected, analysis, self.stage_name)
         self._position(0)
         self._controls()
@@ -106,11 +120,12 @@ class ProcessingController:
     def reset_processing(self):
         if self.occupied:
             return
+        self._reset_effect_settings()
         self._reset_enhancement_settings()
         self.denoise_spin.setValue(60)
         self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
-        self._status('已恢复默认参数与增强旁路，清除处理结果；原声与参考底噪保留。')
+        self._status('已恢复默认参数与增强/音效旁路，清除处理结果；原声与参考底噪保留。')
 
     def _processing_controls(self):
         idle = not self.occupied
@@ -125,3 +140,4 @@ class ProcessingController:
         self.stages.button(1).setEnabled(idle and self.denoised_clip is not None)
         self.save_button.setText(f'保存{self.stage_name} WAV')
         self._enhancement_controls()
+        self._effects_controls()
