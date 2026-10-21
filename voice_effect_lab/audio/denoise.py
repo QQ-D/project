@@ -25,6 +25,7 @@ class DenoiseResult:
     clipped_samples: int
     noise_mode: str = 'reference'
     estimated_frames: int = 0
+    algorithm: str = 'spectral'
 
 
 def _frame_batches(samples, size, hop):
@@ -58,6 +59,23 @@ def _automatic_noise_power(samples, size, hop, window):
     return np.minimum(power, median_filter(power, size=9, mode='nearest')), count
 
 
+def _reference_noise_power(noise_clip, sample_rate, size, hop, window):
+    """仅匹配参考谱，不改变原声或参考缓存。"""
+    noise = noise_clip.samples
+    if noise_clip.sample_rate != sample_rate:
+        divisor = gcd(sample_rate, noise_clip.sample_rate)
+        noise = resample_poly(noise, sample_rate//divisor, noise_clip.sample_rate//divisor)
+    if len(noise) < size:
+        noise = np.pad(noise, (0, size-len(noise)))
+    power = np.zeros(size//2+1, dtype=np.float64)
+    count = 0
+    for _, frames in _frame_batches(noise, size, hop):
+        spectrum = rfft(frames*window, axis=-1)
+        power += (spectrum.real**2+spectrum.imag**2).sum(axis=0, dtype=np.float64)
+        count += len(frames)
+    return (power/count).astype(np.float32)
+
+
 def spectral_subtract(clip: AudioClip, noise_clip: AudioClip | None = None, strength=60) -> DenoiseResult:
     """强度0精确旁路；0–100对应谱减系数0–3，幅度增益下限0.05。
 
@@ -85,21 +103,7 @@ def spectral_subtract(clip: AudioClip, noise_clip: AudioClip | None = None, stre
     if automatic:
         noise_power, estimated_frames = _automatic_noise_power(clip.samples, size, hop, window)
     else:
-        # 重采样只用于参考谱，不改变原声缓存、结果时长或导出采样率。
-        noise = noise_clip.samples
-        if noise_clip.sample_rate != clip.sample_rate:
-            divisor = gcd(clip.sample_rate, noise_clip.sample_rate)
-            noise = resample_poly(noise, clip.sample_rate//divisor,
-                                  noise_clip.sample_rate//divisor)
-        if len(noise) < size:
-            noise = np.pad(noise, (0, size-len(noise)))
-        noise_power = np.zeros(size//2+1, dtype=np.float64)
-        count = 0
-        for _, frames in _frame_batches(noise, size, hop):
-            spectrum = rfft(frames*window, axis=-1)
-            noise_power += (spectrum.real**2+spectrum.imag**2).sum(axis=0, dtype=np.float64)
-            count += len(frames)
-        noise_power = (noise_power/count).astype(np.float32)
+        noise_power = _reference_noise_power(noise_clip, clip.sample_rate, size, hop, window)
 
     padded = np.pad(clip.samples, (size, size))
     output = np.zeros_like(padded)
