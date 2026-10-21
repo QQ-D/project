@@ -76,6 +76,8 @@ class TtsController:
     def play_tts(self):
         if self.occupied or self.tts_clip is None:
             return
+        if hasattr(self, 'neural_player'):
+            self.neural_player.stop()
         self.player.stop()
         try:
             self.tts_player.set_output_device(self.output_combo.currentData())

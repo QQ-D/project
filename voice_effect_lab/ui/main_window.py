@@ -20,6 +20,7 @@ from .enhancement_controller import EnhancementController
 from .effects_controller import EffectsController
 from .advanced_controls import AdvancedControls
 from .tts_controller import TtsController
+from .neural_controller import NeuralController
 
 
 STYLE = '''
@@ -85,12 +86,12 @@ def _parameter(layout, label, low, high, value, suffix='', decimals=2, extra=Non
     return slider, spin
 
 
-class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController, EffectsController, AdvancedControls, TtsController):
+class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController, EffectsController, AdvancedControls, TtsController, NeuralController):
     loaded = pyqtSignal()
 
     def __init__(self, parent=None, recorder=None):
         super().__init__(parent)
-        self.setWindowTitle('智能人声音效台 · 高级音效与中文TTS')
+        self.setWindowTitle('智能人声音效台 · DeepFilterNet3降噪')
         self.resize(1500, 1040)
         self.setMinimumSize(1080, 720)
         self.setStyleSheet(STYLE)
@@ -112,6 +113,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self._init_enhancement()
         self._init_effects()
         self._init_tts()
+        self._init_neural()
         self._build()
         self._controls()
 
@@ -124,7 +126,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('维纳降噪 / 高级音效 / 中文TTS / 四阶段对比'))
+        header.addWidget(QLabel('DeepFilterNet3 / 高级音效 / 中文TTS / BP训练'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
@@ -182,8 +184,8 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([425, 1050])
         tabs.addTab(basic, '基础工作台 · 必做')
-        tabs.addTab(self._extensions(), '扩展功能 · 高级音效 / 中文TTS')
-        tabs.currentChanged.connect(lambda index:self.tts_player.stop() if index!=1 else None)
+        tabs.addTab(self._extensions(), '扩展功能 · 音效 / TTS / BP降噪')
+        tabs.currentChanged.connect(self._preview_tab_changed)
         self.status_label = QLabel('状态：导入原声后可直接去噪或一键增强；增强支持归一化、清晰度、三段均衡与音量。')
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet('color: #1771cb; padding: 6px;')
@@ -226,18 +228,26 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         left.addWidget(group)
 
     def _future_panels(self, left):
-        group, layout = _group('02  一键去噪 · 可选底噪参考')
+        group, layout = _group('02  一键去噪 · DeepFilterNet3')
         self.denoise_method_combo = QComboBox()
-        self.denoise_method_combo.addItem('自适应维纳（默认）','wiener')
+        self.denoise_method_combo.addItem('自适应维纳（传统对照）','wiener')
         self.denoise_method_combo.addItem('功率谱减（对照）','spectral')
-        self.denoise_method_combo.setToolTip('维纳使用平滑增益与自动背景谱跟踪；谱减保留原算法作对照。强度越大可能越伤人声。')
+        self.denoise_method_combo.addItem('DeepFilterNet3（默认 · dbaf）','deepfilter')
+        self.denoise_method_combo.setCurrentIndex(2)
+        self.denoise_method_combo.setToolTip('默认调用本地DeepFilterNet3预训练模型；传统算法供课程对照。')
         self.denoise_method_combo.currentIndexChanged.connect(self._invalidate_denoise)
         _row(layout, QLabel('去噪方法'), self.denoise_method_combo)
+        self.denoise_engine_hint = QLabel('DeepFilterNet3 · dbaf / CPU；无需底噪参考，100%使用完整模型处理。')
+        self.denoise_engine_hint.setWordWrap(True)
+        layout.addWidget(self.denoise_engine_hint)
+        self.noise_reference_panel = QWidget()
+        reference_layout = QVBoxLayout(self.noise_reference_panel)
+        reference_layout.setContentsMargins(0,0,0,0)
         self.auto_noise_check = QCheckBox('自动估计底噪（直接去噪）')
         self.auto_noise_check.setChecked(True)
         self.auto_noise_check.setToolTip('无需额外文件；从低能量帧初始化背景谱，维纳会继续跟踪。估计帧可能含人声，不能保证分离复杂噪声。')
         self.auto_noise_check.toggled.connect(self._noise_mode_changed)
-        layout.addWidget(self.auto_noise_check)
+        reference_layout.addWidget(self.auto_noise_check)
         self.noise_button = _button('采集底噪')
         self.noise_button.clicked.connect(lambda: self.start_recording('noise'))
         self.import_noise_button = _button('导入底噪 WAV')
@@ -247,19 +257,21 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.select_noise_button.clicked.connect(self._choose_noise)
         self.denoise_button = _button('一键去噪')
         self.denoise_button.setEnabled(False)
-        self.denoise_button.setToolTip('默认自动估计底噪；关闭自动模式时使用已确认的底噪参考。原声始终保留。')
+        self.denoise_button.setToolTip('默认用DeepFilterNet3直接处理；原声始终保留。')
         self.denoise_button.clicked.connect(self.start_denoise)
-        _row(layout, self.noise_button, self.import_noise_button)
-        _row(layout, self.select_noise_button, self.denoise_button)
+        _row(reference_layout, self.noise_button, self.import_noise_button)
+        reference_layout.addWidget(self.select_noise_button)
         self.noise_status_label = QLabel('底噪：自动估计，无需额外文件；估计帧可能含人声')
         self.noise_status_label.setWordWrap(True)
-        layout.addWidget(self.noise_status_label)
+        reference_layout.addWidget(self.noise_status_label)
         self.confirm_noise_button = _button('确认底噪适用')
         self.confirm_noise_button.setToolTip('确认参考只含环境噪声、没有说话声，并且与当前原声的噪声环境匹配。')
         self.confirm_noise_button.clicked.connect(self.confirm_noise)
         self.clear_noise_button = _button('清除底噪')
         self.clear_noise_button.clicked.connect(self.clear_noise)
-        _row(layout, self.confirm_noise_button, self.clear_noise_button)
+        _row(reference_layout, self.confirm_noise_button, self.clear_noise_button)
+        layout.addWidget(self.noise_reference_panel)
+        layout.addWidget(self.denoise_button)
         self.use_denoise_check = QCheckBox('使用去噪结果作为后续处理输入')
         self.use_denoise_check.setToolTip('勾选后增强/音效使用有效去噪缓存；没有缓存时先去噪。未勾选时从原声开始。')
         self.use_denoise_check.toggled.connect(self._upstream_policy_changed)
@@ -267,7 +279,8 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.denoise_parameters = QWidget()
         parameters = QVBoxLayout(self.denoise_parameters)
         parameters.setContentsMargins(0, 0, 0, 0)
-        self.denoise_slider, self.denoise_spin = _parameter(parameters, '去噪强度', 0, 100, 60, ' %', 0)
+        self.denoise_slider, self.denoise_spin = _parameter(parameters, '去噪强度', 0, 100, 100, ' %', 0)
+        self.denoise_spin.setToolTip('DeepFilterNet3：100%为完整模型输出，0%精确旁路，中间按原声/模型输出混合。')
         self.denoise_spin.valueChanged.connect(self._invalidate_denoise)
         layout.addWidget(self.denoise_parameters)
         self.denoise_status_label = QLabel('去噪：尚未处理')
@@ -422,7 +435,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def _extensions(self):
         page = QWidget();outer = QVBoxLayout(page)
-        note = QLabel('高级音效和中文TTS已接通；中文合成可独立试听、保存，明确送入后再作为原声制作音效。智能模型属于后续选做。')
+        note = QLabel('高级音效、中文TTS和小型BP降噪已接通；BP可训练、保存/加载，并与维纳比较。明确送入工作台后作为新原声继续加工。')
         note.setWordWrap(True);outer.addWidget(note)
         row = QHBoxLayout()
         group, layout = _group('高级音效 · 可串联')
@@ -441,26 +454,32 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.tts_mute_button.toggled.connect(self.mute_button.setChecked)
         self.mute_button.toggled.connect(self.tts_mute_button.setChecked)
         layout.addWidget(self.build_tts_panel());row.addWidget(group,2)
-        group,layout = _group('智能语音增强 · 待实现',True)
-        for text in ['预训练模型 / 小型 BP / CNN','模型与数据集选择','训练与日志','智能降噪 / 去混响','传统与智能方法对比']:
-            layout.addWidget(_button(text))
-        layout.addStretch();row.addWidget(group,1)
+        group,layout = _group('智能语音增强 · 小型BP')
+        self.neural_scroll = QScrollArea()
+        self.neural_scroll.setWidgetResizable(True)
+        self.neural_scroll.setFrameShape(QScrollArea.NoFrame)
+        self.neural_scroll.setWidget(self.build_neural_panel())
+        layout.addWidget(self.neural_scroll);row.addWidget(group,2)
         outer.addLayout(row,1)
         return page
 
     def _set_listen_volume(self,value):
         self.player.set_volume(value)
         self.tts_player.set_volume(value)
+        self.neural_player.set_volume(value)
 
     def _set_listen_muted(self,muted):
         self.player.set_muted(muted)
         self.tts_player.set_muted(muted)
+        self.neural_player.set_muted(muted)
         self.mute_button.setText('取消静音' if muted else '静音')
         self.tts_mute_button.setText('取消静音' if muted else '静音')
 
     def _controls(self):
         if self.occupied and self.tts_player.state in ('playing','paused'):
             self.tts_player.stop()
+        if self.occupied and self.neural_player.state in ('playing','paused'):
+            self.neural_player.stop()
         available = self.current_clip is not None and not self.occupied
         self.import_button.setEnabled(not self.occupied)
         self.demo_button.setEnabled(not self.occupied)
@@ -473,6 +492,12 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self._capture_controls()
         self._processing_controls()
         self._tts_controls()
+        self._neural_controls()
+
+    def _preview_tab_changed(self,index):
+        if index != 1:
+            self.tts_player.stop()
+            self.neural_player.stop()
 
     def _job(self, function, result, message):
         if self.occupied:
@@ -506,6 +531,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def _loaded(self, result, source_kind='import'):
         self.clip, self.analysis = result
+        self._neural_source_changed()
         self._source_replaced(source_kind)
         self.player.set_clip(self.clip)
         self.info_label.setText(f'采样率：{self.clip.sample_rate} Hz    时长：{self.clip.duration:.2f} s\n'
@@ -545,12 +571,15 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def _play(self):
         self.tts_player.stop()
+        self.neural_player.stop()
         try:
             self.player.play()
         except PlaybackError as exc:
             self._error(str(exc))
 
     def _choose_output(self):
+        self.tts_player.stop()
+        self.neural_player.stop()
         self.player.set_output_device(self.output_combo.currentData())
         self.output_combo.setToolTip(self.output_combo.currentText())
         self._status('输出设备已切换，点击播放从头开始。')
@@ -590,6 +619,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def closeEvent(self, event):
         self.tts_player.stop()
+        self.neural_player.stop()
         self.recorder.close()
         self._recording_target = None
         if self.busy:
@@ -599,4 +629,5 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
             return
         self.player.close()
         self.tts_player.close()
+        self._close_neural()
         super().closeEvent(event)

@@ -6,7 +6,7 @@ import sys
 
 
 def main():
-    parser = argparse.ArgumentParser(description='智能人声音效台 · 高级音效与中文TTS')
+    parser = argparse.ArgumentParser(description='智能人声音效台 · DeepFilterNet3降噪、音效与中文TTS')
     parser.add_argument('--demo', action='store_true', help='载入附带的合成测试音')
     parser.add_argument('--file', type=Path, help='启动时导入指定 WAV')
     parser.add_argument('--screenshot', type=Path, help='保存实际 GUI 截图并退出；无显示环境时使用离屏模式')

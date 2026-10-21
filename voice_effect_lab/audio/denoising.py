@@ -3,10 +3,13 @@ from .data import AudioError
 from .denoise import spectral_subtract
 from .wiener import wiener_denoise
 
-METHOD_NAMES={'wiener':'自适应维纳','spectral':'功率谱减'}
+METHOD_NAMES={'wiener':'自适应维纳','spectral':'功率谱减','deepfilter':'DeepFilterNet3'}
 
 
 def denoise_audio(clip, noise_clip=None, strength=60, method='wiener'):
+    if method=='deepfilter':
+        from .deepfilter import deepfilter_denoise
+        return deepfilter_denoise(clip,noise_clip,strength)
     if method=='wiener':
         return wiener_denoise(clip,noise_clip,strength)
     if method=='spectral':

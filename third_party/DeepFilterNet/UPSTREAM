@@ -1,0 +1,9 @@
+DeepFilterNet (vendored inference subset)
+Upstream: https://github.com/Rikorose/DeepFilterNet
+Commit: d375b2d8309e0935d165700c91da9de862a99c31
+Source: /media/rwj/ZX1 2TB/project/DeepFilterNet
+License: MIT OR Apache-2.0; see LICENSE, LICENSE-MIT, LICENSE-APACHE.
+Copied without modification: 12 runtime df Python files, Python package metadata,
+DeepFilterNet3 config.ini and model_120.ckpt.best. No data, virtual environments, logs or other models.
+Checkpoint SHA256: 23b92884f63ccf54bb026014604625ab231657b6480df65db4095c4c171e6003
+Config SHA256: 415eb925d44990d938fb739f514aa3662c1ec0ea836cff044fa1291b82cb4290

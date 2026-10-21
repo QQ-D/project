@@ -45,6 +45,8 @@ def test_imported_noise_requires_confirmation_and_preserves_original(app, tmp_pa
 
 def test_noise_can_be_imported_before_voice_without_input_device(app, tmp_path):
     window = MainWindow()
+    window.denoise_method_combo.setCurrentIndex(window.denoise_method_combo.findData('wiener'))
+    window.denoise_spin.setValue(60)
     try:
         window.load_noise_path(noise_file(tmp_path))
         wait_idle(app, window)

@@ -17,10 +17,13 @@ class ProcessingController:
         return {0:'原声', 1:'去噪', 2:'增强', 3:'音效'}.get(self.stages.checkedId(), '原声')
 
     def _can_denoise(self):
+        if self.denoise_method_combo.currentData() == 'deepfilter':
+            return True
         return self.auto_noise_check.isChecked() or (self.noise_clip is not None and self.noise_confirmed)
 
     def _denoise_snapshot(self):
-        automatic = self.auto_noise_check.isChecked()
+        automatic = (self.denoise_method_combo.currentData() == 'deepfilter'
+                     or self.auto_noise_check.isChecked())
         return (automatic, self.denoise_spin.value(), None if automatic else id(self.noise_clip),
                 True if automatic else self.noise_confirmed, self.denoise_method_combo.currentData())
 
@@ -30,10 +33,14 @@ class ProcessingController:
         if self._enhanced_from_denoise:
             self._clear_enhancement()
         self.denoised_clip, self.denoised_analysis = info.clip, analysis
-        mode = (f'自动估计（{info.estimated_frames}帧，可能含人声）' if info.estimated_frames
-                else '自动估计（0%旁路）') if automatic else '参考底噪'
-        tracking = ' · 噪声谱跟踪' if automatic and info.algorithm == 'wiener' and strength else ''
-        details = f'去噪：{METHOD_NAMES[info.algorithm]} · {mode}{tracking} · 强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
+        if info.algorithm == 'deepfilter':
+            details = (f'去噪：DeepFilterNet3 · dbaf / CPU · 模型混合 {strength:g}%'
+                       f' · 算法耗时 {info.elapsed_seconds:.3f} s')
+        else:
+            mode = (f'自动估计（{info.estimated_frames}帧，可能含人声）' if info.estimated_frames
+                    else '自动估计（0%旁路）') if automatic else '参考底噪'
+            tracking = ' · 噪声谱跟踪' if automatic and info.algorithm == 'wiener' and strength else ''
+            details = f'去噪：{METHOD_NAMES[info.algorithm]} · {mode}{tracking} · 强度 {strength:g}% · 算法耗时 {info.elapsed_seconds:.3f} s'
         if info.clipped_samples:
             details += f' · {info.clipped_samples} 个越界样本已限幅'
         self.denoise_status_label.setText(details)
@@ -44,7 +51,7 @@ class ProcessingController:
         if self.clip is None:
             self._error('请先导入或录制原声。')
             return
-        automatic = self.auto_noise_check.isChecked()
+        automatic = self._denoise_snapshot()[0]
         if not automatic and (self.noise_clip is None or not self.noise_confirmed):
             self._error('请先导入、采集或选取纯底噪，并确认它适用于当前原声。')
             return
@@ -123,21 +130,23 @@ class ProcessingController:
             return
         self._reset_effect_settings()
         self._reset_enhancement_settings()
-        self.denoise_method_combo.setCurrentIndex(0)
-        self.denoise_spin.setValue(60)
+        self.denoise_method_combo.setCurrentIndex(self.denoise_method_combo.findData('deepfilter'))
+        self.denoise_spin.setValue(100)
         self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
         self._status('已恢复默认参数与增强/音效旁路，清除处理结果；原声与参考底噪保留。')
 
     def _processing_controls(self):
         idle = not self.occupied
-        can_process = idle and self.clip is not None and (self.auto_noise_check.isChecked()
-                      or (self.noise_clip is not None and self.noise_confirmed))
+        can_process = idle and self.clip is not None and self._can_denoise()
         self.denoise_button.setEnabled(can_process)
         self.process_button.setEnabled(can_process)
         self.reset_button.setEnabled(idle and self.clip is not None)
         self.denoise_parameters.setEnabled(idle)
-        self.auto_noise_check.setEnabled(idle)
+        model_mode = self.denoise_method_combo.currentData() == 'deepfilter'
+        self.noise_reference_panel.setVisible(not model_mode)
+        self.denoise_engine_hint.setVisible(model_mode)
+        self.auto_noise_check.setEnabled(idle and not model_mode)
         self.denoise_method_combo.setEnabled(idle)
         self.stages.button(0).setEnabled(idle and self.clip is not None)
         self.stages.button(1).setEnabled(idle and self.denoised_clip is not None)
