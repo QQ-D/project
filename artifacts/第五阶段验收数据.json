@@ -1,0 +1,61 @@
+{
+  "source": "仓库合成测试音，非真人录音",
+  "sample_rate": 44100,
+  "presets": {
+    "磁性": {
+      "rate": 1.0,
+      "samples": 273420,
+      "duration_seconds": 6.2,
+      "peak": 0.949999988079071
+    },
+    "娃娃音": {
+      "rate": 1.35,
+      "samples": 202534,
+      "duration_seconds": 4.592607709750567,
+      "peak": 0.9401744604110718
+    },
+    "大叔音": {
+      "rate": 0.8,
+      "samples": 341775,
+      "duration_seconds": 7.75,
+      "peak": 0.9506179690361023
+    },
+    "电话音": {
+      "rate": 1.0,
+      "samples": 273420,
+      "duration_seconds": 6.2,
+      "peak": 0.9245508909225464
+    },
+    "山谷回声": {
+      "rate": 1.0,
+      "samples": 286650,
+      "duration_seconds": 6.5,
+      "peak": 1.0
+    }
+  },
+  "four_stage_exports": {
+    "原声": {
+      "samples": 273420,
+      "duration_seconds": 6.2
+    },
+    "去噪": {
+      "samples": 273420,
+      "duration_seconds": 6.2
+    },
+    "增强": {
+      "samples": 273420,
+      "duration_seconds": 6.2
+    },
+    "音效": {
+      "samples": 231966,
+      "duration_seconds": 5.26
+    }
+  },
+  "final_parameters": {
+    "rate": 1.25,
+    "echo_delay": 0.3,
+    "echo_strength": 0.45
+  },
+  "flow": "五种预设→去噪+增强+音效链路→四阶段试听缓存及导出核对→截图：通过",
+  "scope": "未启动麦克风或扬声器；风格参数验收不替代真人语音试听"
+}
