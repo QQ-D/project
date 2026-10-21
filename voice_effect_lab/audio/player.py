@@ -1,5 +1,6 @@
 """使用已有 QtMultimedia 播放内存缓存，不依赖 PortAudio。"""
 from math import gcd
+from numbers import Real
 
 import numpy as np
 from scipy.signal import resample_poly
@@ -86,6 +87,8 @@ class AudioPlayer(QObject):
 
     def __init__(self, parent=None, output_factory=None):
         super().__init__(parent)
+        self.volume = 100.0
+        self.muted = False
         self.output_device_name = None
         self._output_factory = output_factory
         self._clip = None
@@ -126,6 +129,23 @@ class AudioPlayer(QObject):
         self.stop()
         self.output_device_name = name or None
 
+    def set_volume(self, percent):
+        if (not isinstance(percent, Real) or isinstance(percent, bool)
+                or not np.isfinite(percent) or not 0 <= percent <= 100):
+            raise PlaybackError('试听音量必须为0–100%的有限数值。')
+        self.volume = float(percent)
+        self._apply_volume()
+
+    def set_muted(self, muted):
+        if not isinstance(muted, bool):
+            raise PlaybackError('静音开关必须为布尔值。')
+        self.muted = muted
+        self._apply_volume()
+
+    def _apply_volume(self):
+        if self._output is not None:
+            self._output.setVolume(0.0 if self.muted else self.volume/100)
+
     def play(self):
         if self._clip is None:
             raise PlaybackError('请先导入音频。')
@@ -154,6 +174,7 @@ class AudioPlayer(QObject):
                     self._output, fmt = self._output_factory(self._clip.sample_rate, self)
                 else:
                     self._output, fmt = _default_output(self._clip.sample_rate, self, name)
+                self._apply_volume()
                 payload = pcm_bytes(self._clip, fmt)
                 self._buffer = QBuffer(self)
                 self._buffer.setData(QByteArray(payload))

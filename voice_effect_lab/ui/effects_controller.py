@@ -1,7 +1,7 @@
 """音效参数、预设与按依赖原子采用的四阶段后台流程。"""
 from PyQt5.QtCore import QSignalBlocker
 
-from ..audio.effects import EffectsSettings, apply_effects
+from ..audio.effects import EffectsSettings, apply_effects, EFFECT_NAMES
 from ..audio.enhance import enhance_audio
 from ..audio.denoising import denoise_audio
 from ..analysis import analyze
@@ -18,7 +18,8 @@ class EffectsController:
         return EffectsSettings(self.effects_check.isChecked(), self.rate_spin.value(),
                                self.telephone_check.isChecked(), self.echo_delay_spin.value(),
                                self.echo_strength_spin.value(),
-                               int(self.multiecho_count_spin.value()) if self.multiecho_check.isChecked() else 1)
+                               int(self.multiecho_count_spin.value()) if self.multiecho_check.isChecked() else 1,
+                               **self._advanced_settings())
 
     def _clear_effects(self):
         self.effected_clip = self.effected_analysis = None
@@ -59,6 +60,7 @@ class EffectsController:
         try:
             self.effects_check.setChecked(name != '原声')
             if name != '自定义':
+                self._reset_advanced_settings()
                 self.multiecho_check.setChecked(False)
                 self.multiecho_count_spin.setValue(3)
                 self.rate_spin.setValue(1)
@@ -155,6 +157,13 @@ class EffectsController:
             source_name = '增强' if enhancement.enabled else ('去噪' if use_noise else '原声')
             details = (f'音效：输入{source_name} · {settings.rate:.2f}× · '
                        f'{info.clip.duration:.2f} s · 算法 {info.elapsed_seconds:.3f} s')
+            active={'pitch_tempo':settings.independent_enabled and (settings.pitch_semitones!=0 or settings.tempo!=1),
+                    'telephone':settings.telephone,'modulation':settings.modulation_enabled and settings.modulation_mix>0,
+                    'compression':settings.compression_enabled,'echo':settings.echo_strength>0,
+                    'reverb':settings.reverb_enabled and settings.reverb_wet>0}
+            chain=[EFFECT_NAMES[key] for key in settings.chain_order if active[key]]
+            if chain:
+                details += ' · '+ '→'.join(chain)
             if settings.echo_strength:
                 details += f' · 回声{settings.echo_count}次/间隔{settings.echo_delay:.2f}s'
             if info.clipped_samples:
@@ -169,6 +178,7 @@ class EffectsController:
         idle = not self.occupied
         available = idle and self.clip is not None
         ready = not self.use_denoise_check.isChecked() or self.denoised_clip is not None or self._can_denoise()
+        self._advanced_controls(available,ready)
         self.multiecho_panel.setEnabled(available)
         self.multiecho_count_controls.setEnabled(self.multiecho_check.isChecked())
         self.multiecho_button.setEnabled(available and ready)
@@ -184,6 +194,7 @@ class EffectsController:
             self.process_button.setEnabled(available and ready)
 
     def _reset_effect_settings(self):
+        self._reset_advanced_settings()
         widgets = [self.effects_check,self.telephone_check,self.rate_spin,
                    self.echo_delay_spin,self.echo_strength_spin,self.multiecho_check,self.multiecho_count_spin]
         blockers = [QSignalBlocker(widget) for widget in widgets]

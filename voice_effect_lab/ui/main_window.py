@@ -18,6 +18,8 @@ from .capture_controller import CaptureController
 from .processing_controller import ProcessingController
 from .enhancement_controller import EnhancementController
 from .effects_controller import EffectsController
+from .advanced_controls import AdvancedControls
+from .tts_controller import TtsController
 
 
 STYLE = '''
@@ -64,7 +66,7 @@ def _row(layout, *widgets):
     layout.addLayout(row)
 
 
-def _parameter(layout, label, low, high, value, suffix='', decimals=2):
+def _parameter(layout, label, low, high, value, suffix='', decimals=2, extra=None):
     text = QLabel(label)
     text.setMinimumWidth(80)
     slider = QSlider(Qt.Horizontal)
@@ -79,16 +81,16 @@ def _parameter(layout, label, low, high, value, suffix='', decimals=2):
     spin.setFixedWidth(86)
     slider.valueChanged.connect(lambda v: spin.setValue(v/scale))
     spin.valueChanged.connect(lambda v: slider.setValue(round(v*scale)))
-    _row(layout, text, slider, spin)
+    _row(layout, text, slider, spin, *([extra] if extra is not None else []))
     return slider, spin
 
 
-class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController, EffectsController):
+class MainWindow(QMainWindow, CaptureController, ProcessingController, EnhancementController, EffectsController, AdvancedControls, TtsController):
     loaded = pyqtSignal()
 
     def __init__(self, parent=None, recorder=None):
         super().__init__(parent)
-        self.setWindowTitle('智能人声音效台 · 多重回声')
+        self.setWindowTitle('智能人声音效台 · 高级音效与中文TTS')
         self.resize(1500, 1040)
         self.setMinimumSize(1080, 720)
         self.setStyleSheet(STYLE)
@@ -109,6 +111,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self._init_processing()
         self._init_enhancement()
         self._init_effects()
+        self._init_tts()
         self._build()
         self._controls()
 
@@ -121,7 +124,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('基础处理 / 维纳降噪 / 多重回声 / 四阶段对比'))
+        header.addWidget(QLabel('维纳降噪 / 高级音效 / 中文TTS / 四阶段对比'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
@@ -179,7 +182,8 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([425, 1050])
         tabs.addTab(basic, '基础工作台 · 必做')
-        tabs.addTab(self._extensions(), '扩展功能 · 多重回声')
+        tabs.addTab(self._extensions(), '扩展功能 · 高级音效 / 中文TTS')
+        tabs.currentChanged.connect(lambda index:self.tts_player.stop() if index!=1 else None)
         self.status_label = QLabel('状态：导入原声后可直接去噪或一键增强；增强支持归一化、清晰度、三段均衡与音量。')
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet('color: #1771cb; padding: 6px;')
@@ -375,7 +379,13 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.play_button.clicked.connect(self._play)
         self.pause_button.clicked.connect(self.player.pause)
         self.stop_button.clicked.connect(self._stop_action)
+        self.mute_button = _button('静音')
+        self.mute_button.setCheckable(True)
+        self.mute_button.toggled.connect(self._set_listen_muted)
         _row(layout, self.play_button, self.pause_button, self.stop_button)
+        self.listen_volume_slider,self.listen_volume_spin = _parameter(layout,'试听音量',0,100,100,' %',0,extra=self.mute_button)
+        self.listen_volume_spin.setToolTip('实时控制主工作台和TTS试听，不改变音频与导出；100%为原设备输出，进一步放大用03增益或压缩补偿。')
+        self.listen_volume_spin.valueChanged.connect(self._set_listen_volume)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setRange(0, 1000)
@@ -411,31 +421,46 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         layout.addWidget(self.multiecho_panel)
 
     def _extensions(self):
-        page = QWidget()
-        outer = QVBoxLayout(page)
-        note = QLabel('多重回声已实现：先在基础工作台导入音频，再配置并应用。其他选做入口待实现。')
-        note.setWordWrap(True)
-        outer.addWidget(note)
+        page = QWidget();outer = QVBoxLayout(page)
+        note = QLabel('高级音效和中文TTS已接通；中文合成可独立试听、保存，明确送入后再作为原声制作音效。智能模型属于后续选做。')
+        note.setWordWrap(True);outer.addWidget(note)
         row = QHBoxLayout()
-        for title, labels in [
-            ('高级音效', ['房间混响', '机械电音 / 调制', '动态压缩', '音效串联', '音高与语速独立调整']),
-            ('中文 TTS', ['输入中文生成语音', '合成语速与音色', '试听与保存', '送入主工作台制作配音']),
-            ('智能语音增强', ['预训练模型 / 小型 BP / CNN', '模型与数据集选择', '训练与日志', '降噪 / 去混响', '传统方法与智能方法对比'])]:
-            group, layout = _group(title, title != '高级音效')
-            if title == '高级音效':
-                self._multiecho_panel(layout)
-                layout.addWidget(QLabel('其余高级音效 · 待实现'))
-            for label in labels:
-                button = _button(label)
-                button.setEnabled(False)
-                button.setToolTip('此选做功能尚未实现。')
-                layout.addWidget(button)
-            layout.addStretch()
-            row.addWidget(group)
-        outer.addLayout(row, 1)
+        group, layout = _group('高级音效 · 可串联')
+        content = QWidget();controls = QVBoxLayout(content)
+        self._multiecho_panel(controls)
+        controls.addWidget(self.build_advanced_panel(_parameter,_button))
+        controls.addStretch()
+        scroll = self.advanced_scroll = QScrollArea()
+        scroll.setWidgetResizable(True);scroll.setWidget(content);scroll.setFrameShape(QScrollArea.NoFrame)
+        layout.addWidget(scroll);row.addWidget(group,2)
+        group,layout = _group('中文 TTS · 离线')
+        self.tts_mute_button = _button('静音');self.tts_mute_button.setCheckable(True)
+        self.tts_volume_slider,self.tts_volume_spin = _parameter(layout,'试听音量',0,100,100,' %',0,extra=self.tts_mute_button)
+        self.tts_volume_spin.valueChanged.connect(self.listen_volume_spin.setValue)
+        self.listen_volume_spin.valueChanged.connect(self.tts_volume_spin.setValue)
+        self.tts_mute_button.toggled.connect(self.mute_button.setChecked)
+        self.mute_button.toggled.connect(self.tts_mute_button.setChecked)
+        layout.addWidget(self.build_tts_panel());row.addWidget(group,2)
+        group,layout = _group('智能语音增强 · 待实现',True)
+        for text in ['预训练模型 / 小型 BP / CNN','模型与数据集选择','训练与日志','智能降噪 / 去混响','传统与智能方法对比']:
+            layout.addWidget(_button(text))
+        layout.addStretch();row.addWidget(group,1)
+        outer.addLayout(row,1)
         return page
 
+    def _set_listen_volume(self,value):
+        self.player.set_volume(value)
+        self.tts_player.set_volume(value)
+
+    def _set_listen_muted(self,muted):
+        self.player.set_muted(muted)
+        self.tts_player.set_muted(muted)
+        self.mute_button.setText('取消静音' if muted else '静音')
+        self.tts_mute_button.setText('取消静音' if muted else '静音')
+
     def _controls(self):
+        if self.occupied and self.tts_player.state in ('playing','paused'):
+            self.tts_player.stop()
         available = self.current_clip is not None and not self.occupied
         self.import_button.setEnabled(not self.occupied)
         self.demo_button.setEnabled(not self.occupied)
@@ -447,6 +472,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.save_button.setEnabled(available)
         self._capture_controls()
         self._processing_controls()
+        self._tts_controls()
 
     def _job(self, function, result, message):
         if self.occupied:
@@ -518,6 +544,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
             self.save_to(path)
 
     def _play(self):
+        self.tts_player.stop()
         try:
             self.player.play()
         except PlaybackError as exc:
@@ -562,6 +589,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.status_label.setText('错误：'+message)
 
     def closeEvent(self, event):
+        self.tts_player.stop()
         self.recorder.close()
         self._recording_target = None
         if self.busy:
@@ -570,4 +598,5 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
             event.ignore()
             return
         self.player.close()
+        self.tts_player.close()
         super().closeEvent(event)

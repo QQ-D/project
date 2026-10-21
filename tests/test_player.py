@@ -29,6 +29,9 @@ class DeviceOutput(QObject):
         self.device = None
         self.elapsed = 0
 
+    def setVolume(self, value):
+        self.volume = value
+
     def start(self, device):
         self.device = device
         self.elapsed = 0
