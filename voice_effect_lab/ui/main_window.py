@@ -88,7 +88,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
 
     def __init__(self, parent=None, recorder=None):
         super().__init__(parent)
-        self.setWindowTitle('智能人声音效台 · 第五阶段')
+        self.setWindowTitle('智能人声音效台 · 多重回声')
         self.resize(1500, 1040)
         self.setMinimumSize(1080, 720)
         self.setStyleSheet(STYLE)
@@ -121,13 +121,13 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         title = QLabel('智能人声音效台')
         title.setStyleSheet('font-size: 23px; font-weight: bold; color: #263549;')
         header.addWidget(title)
-        header.addWidget(QLabel('第五阶段 · 去噪 / 增强 / 倍率与音效 / 四阶段对比'))
+        header.addWidget(QLabel('基础处理 / 维纳降噪 / 多重回声 / 四阶段对比'))
         header.addStretch()
         self.demo_button = _button('载入合成测试音')
         self.demo_button.clicked.connect(self.load_demo)
         header.addWidget(self.demo_button)
         outer.addLayout(header)
-        tabs = QTabWidget()
+        tabs = self.tabs = QTabWidget()
         outer.addWidget(tabs, 1)
         basic = QWidget()
         layout = QHBoxLayout(basic)
@@ -179,7 +179,7 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([425, 1050])
         tabs.addTab(basic, '基础工作台 · 必做')
-        tabs.addTab(self._extensions(), '扩展功能 · 选做（未实现）')
+        tabs.addTab(self._extensions(), '扩展功能 · 多重回声')
         self.status_label = QLabel('状态：导入原声后可直接去噪或一键增强；增强支持归一化、清晰度、三段均衡与音量。')
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet('color: #1771cb; padding: 6px;')
@@ -334,6 +334,9 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         self.echo_strength_slider, self.echo_strength_spin = _parameter(parameters,'回声强度',0,.8,0)
         for spin in (self.rate_spin,self.echo_delay_spin,self.echo_strength_spin):
             spin.valueChanged.connect(self._effect_parameter_changed)
+        self.echo_mode_label = QLabel('回声配置：单次')
+        self.echo_mode_label.setWordWrap(True)
+        parameters.addWidget(self.echo_mode_label)
         layout.addWidget(self.effects_parameters)
         self.effects_button = _button('应用音效',True)
         self.effects_button.clicked.connect(self.start_effects)
@@ -380,18 +383,53 @@ class MainWindow(QMainWindow, CaptureController, ProcessingController, Enhanceme
         _row(layout, self.progress, self.progress_label)
         left.addWidget(group)
 
+    def _multiecho_panel(self, layout):
+        self.multiecho_panel = QWidget()
+        controls = QVBoxLayout(self.multiecho_panel)
+        controls.setContentsMargins(0,0,0,0)
+        self.multiecho_check = QCheckBox('启用多重回声')
+        self.multiecho_check.toggled.connect(self._multiecho_changed)
+        controls.addWidget(self.multiecho_check)
+        self.multiecho_count_controls = QWidget()
+        count_layout = QVBoxLayout(self.multiecho_count_controls)
+        count_layout.setContentsMargins(0,0,0,0)
+        self.multiecho_count_slider, self.multiecho_count_spin = _parameter(count_layout,'回声次数',1,8,3,' 次',0)
+        self.multiecho_count_spin.valueChanged.connect(self._effect_parameter_changed)
+        controls.addWidget(self.multiecho_count_controls)
+        self.multiecho_delay_slider, self.multiecho_delay_spin = _parameter(controls,'回声间隔',0,1,.3,' s')
+        self.multiecho_strength_slider, self.multiecho_strength_spin = _parameter(controls,'强度 / 衰减',0,.8,0)
+        for extra, basic in [(self.multiecho_delay_spin,self.echo_delay_spin),
+                             (self.multiecho_strength_spin,self.echo_strength_spin)]:
+            extra.valueChanged.connect(basic.setValue)
+            basic.valueChanged.connect(extra.setValue)
+        note = QLabel('间隔、强度与主工作台共享；每次回声按强度系数继续衰减，保留全部尾音。')
+        note.setWordWrap(True)
+        controls.addWidget(note)
+        self.multiecho_button = _button('应用多重回声并返回工作台',True)
+        self.multiecho_button.clicked.connect(self.start_multiecho)
+        controls.addWidget(self.multiecho_button)
+        layout.addWidget(self.multiecho_panel)
+
     def _extensions(self):
         page = QWidget()
         outer = QVBoxLayout(page)
-        outer.addWidget(QLabel('选做设计入口 · 当前均未实现；优先完成基础任务。'))
+        note = QLabel('多重回声已实现：先在基础工作台导入音频，再配置并应用。其他选做入口待实现。')
+        note.setWordWrap(True)
+        outer.addWidget(note)
         row = QHBoxLayout()
         for title, labels in [
-            ('高级音效', ['多重回声', '房间混响', '机械电音 / 调制', '动态压缩', '音效串联', '音高与语速独立调整']),
+            ('高级音效', ['房间混响', '机械电音 / 调制', '动态压缩', '音效串联', '音高与语速独立调整']),
             ('中文 TTS', ['输入中文生成语音', '合成语速与音色', '试听与保存', '送入主工作台制作配音']),
             ('智能语音增强', ['预训练模型 / 小型 BP / CNN', '模型与数据集选择', '训练与日志', '降噪 / 去混响', '传统方法与智能方法对比'])]:
-            group, layout = _group(title, True)
+            group, layout = _group(title, title != '高级音效')
+            if title == '高级音效':
+                self._multiecho_panel(layout)
+                layout.addWidget(QLabel('其余高级音效 · 待实现'))
             for label in labels:
-                layout.addWidget(_button(label))
+                button = _button(label)
+                button.setEnabled(False)
+                button.setToolTip('此选做功能尚未实现。')
+                layout.addWidget(button)
             layout.addStretch()
             row.addWidget(group)
         outer.addLayout(row, 1)

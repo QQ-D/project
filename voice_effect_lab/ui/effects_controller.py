@@ -17,7 +17,8 @@ class EffectsController:
     def _effect_settings(self):
         return EffectsSettings(self.effects_check.isChecked(), self.rate_spin.value(),
                                self.telephone_check.isChecked(), self.echo_delay_spin.value(),
-                               self.echo_strength_spin.value())
+                               self.echo_strength_spin.value(),
+                               int(self.multiecho_count_spin.value()) if self.multiecho_check.isChecked() else 1)
 
     def _clear_effects(self):
         self.effected_clip = self.effected_analysis = None
@@ -58,6 +59,8 @@ class EffectsController:
         try:
             self.effects_check.setChecked(name != '原声')
             if name != '自定义':
+                self.multiecho_check.setChecked(False)
+                self.multiecho_count_spin.setValue(3)
                 self.rate_spin.setValue(1)
                 self.telephone_check.setChecked(name == '电话音')
                 self.echo_delay_spin.setValue(.3)
@@ -74,6 +77,25 @@ class EffectsController:
             self._invalidate_effects()
         finally:
             self._loading_preset = False
+
+    def _multiecho_changed(self, enabled):
+        if enabled and not self._loading_preset:
+            self.effects_check.setChecked(True)
+        self._effect_parameter_changed()
+
+    def start_multiecho(self):
+        if self.occupied:
+            return
+        if self.clip is None:
+            self._error('请先在基础工作台导入或录制原声。')
+            return
+        self.multiecho_check.setChecked(True)
+        if self.echo_strength_spin.value() == 0:
+            self.echo_strength_spin.setValue(.45)
+        self.start_effects()
+        if self.busy:
+            self.tabs.setCurrentIndex(0)
+            self.control_scroll.ensureWidgetVisible(self.effects_group,10,10)
 
     def start_effects(self):
         if self.occupied:
@@ -133,6 +155,8 @@ class EffectsController:
             source_name = '增强' if enhancement.enabled else ('去噪' if use_noise else '原声')
             details = (f'音效：输入{source_name} · {settings.rate:.2f}× · '
                        f'{info.clip.duration:.2f} s · 算法 {info.elapsed_seconds:.3f} s')
+            if settings.echo_strength:
+                details += f' · 回声{settings.echo_count}次/间隔{settings.echo_delay:.2f}s'
             if info.clipped_samples:
                 details += f' · {info.clipped_samples}个样本限幅，可降低上游增益或回声强度'
             self.effects_status_label.setText(details)
@@ -145,6 +169,12 @@ class EffectsController:
         idle = not self.occupied
         available = idle and self.clip is not None
         ready = not self.use_denoise_check.isChecked() or self.denoised_clip is not None or self._can_denoise()
+        self.multiecho_panel.setEnabled(available)
+        self.multiecho_count_controls.setEnabled(self.multiecho_check.isChecked())
+        self.multiecho_button.setEnabled(available and ready)
+        count = int(self.multiecho_count_spin.value()) if self.multiecho_check.isChecked() else 1
+        self.echo_mode_label.setText(f'回声配置：{count}次 · 最后一次延迟 {count*self.echo_delay_spin.value():.2f} s'
+                                     if self.echo_strength_spin.value() else '回声配置：强度为0，回声关闭')
         self.effects_check.setEnabled(idle)
         self.effects_parameters.setEnabled(available and self.effects_check.isChecked())
         self.presets_group.setEnabled(available)
@@ -155,15 +185,20 @@ class EffectsController:
 
     def _reset_effect_settings(self):
         widgets = [self.effects_check,self.telephone_check,self.rate_spin,
-                   self.echo_delay_spin,self.echo_strength_spin]
+                   self.echo_delay_spin,self.echo_strength_spin,self.multiecho_check,self.multiecho_count_spin]
         blockers = [QSignalBlocker(widget) for widget in widgets]
         self.effects_check.setChecked(False)
         self.telephone_check.setChecked(False)
+        self.multiecho_check.setChecked(False)
+        self.multiecho_count_spin.setValue(3)
+        self.multiecho_count_slider.setValue(3)
         for spin, slider, value in [(self.rate_spin,self.rate_slider,1),
                                      (self.echo_delay_spin,self.echo_delay_slider,.3),
                                      (self.echo_strength_spin,self.echo_strength_slider,0)]:
             spin.setValue(value)
             slider.setValue(round(value*100))
         del blockers
+        self.multiecho_delay_spin.setValue(self.echo_delay_spin.value())
+        self.multiecho_strength_spin.setValue(self.echo_strength_spin.value())
         self._clear_effects()
         self._show_preset('原声')
