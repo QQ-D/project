@@ -57,6 +57,8 @@ def main():
         wait_idle()
         previous = window.clip
         window.tabs.setCurrentIndex(1)
+        window.extension_tabs.setCurrentIndex(2)
+        window.neural_engine_combo.setCurrentIndex(window.neural_engine_combo.findData('bp'))
         window.neural_epochs_spin.setValue(20)
         window.neural_batch_spin.setValue(128)
         window.neural_train_button.click()
@@ -124,6 +126,8 @@ def main():
         app.processEvents()
         point = window.neural_send_button.mapTo(window.neural_scroll.viewport(), window.neural_send_button.rect().center())
         assert window.neural_scroll.viewport().rect().contains(point)
+        window.extension_tabs.setCurrentIndex(1)
+        app.processEvents()
         button = window.tts_send_button
         point = button.mapTo(window, button.rect().bottomRight())
         assert point.x() < window.width() and point.y() < window.height()
@@ -162,7 +166,7 @@ def main():
             'checks': ['训练数据与验证/演示信号独立', '模型NPZ重载权重及推理结果相同',
                        '比较保留原声与工作台缓存，三种结果的图形/播放缓存/导出一致',
                        '无干净参考时SNR全部为None且界面显示—',
-                       '明确发送BP结果后可继续增强和混响', '最小窗口训练/发送可滚动到达，TTS按钮完整可见'],
+                       '明确发送BP结果后可继续增强和混响', '最小窗口训练/发送可滚动到达，TTS独立子页按钮完整可见'],
             'limitations': '教学BP仅由合成谐波训练，不保证真实语音泛化或优于维纳。'}
         (artifacts / 'BP降噪验收数据.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         print(json.dumps(report, ensure_ascii=False, indent=2))

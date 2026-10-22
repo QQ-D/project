@@ -16,6 +16,7 @@ from ..audio.data import AudioError, load_wav, save_wav
 from ..audio.player import AudioPlayer, PlaybackError
 from ..audio.neural import train_model, denoise_neural, load_model, save_model, make_demo_pair
 from ..audio.wiener import wiener_denoise
+from ..audio.deepfilter import deepfilter_denoise, deepfilter_available
 from .neural_panel import make_neural_panel
 from .plots import AnalysisPlots
 
@@ -39,6 +40,7 @@ class NeuralController:
     def _init_neural(self):
         self.neural_model = self.neural_training_clip = None
         self.neural_clip = self.neural_analysis = None
+        self.neural_deepfilter_clip = self.neural_deepfilter_analysis = None
         self.neural_traditional_clip = self.neural_traditional_analysis = None
         self.neural_source_clip = self.neural_source_analysis = None
         self.neural_metrics = {}
@@ -114,7 +116,7 @@ class NeuralController:
 
     def _neural_adopt_model(self, model):
         self.neural_model = model
-        self._neural_clear_results()
+        self._neural_clear_results('bp')
         self.neural_model_label.setText(f'模型就绪 · {model.training_label}')
 
     def load_neural_model_path(self, path):
@@ -153,20 +155,37 @@ class NeuralController:
             self._status('公开加噪演示已载入；此原声具有独立干净参考，可计算 SNR。')
         self._job(compute, apply, '正在生成公开加噪演示与分析数据…')
 
+    def _neural_engine_changed(self, *_):
+        engine = self.neural_engine_combo.currentData()
+        is_bp = engine == 'bp'
+        self.neural_training_panel.setVisible(is_bp)
+        self.deepfilter_parameters.setVisible(not is_bp)
+        self.neural_scope_label.setText(
+            '教学小型 BP 频谱掩膜网络；效果依赖训练数据，不保证优于维纳。' if is_bp else
+            'DeepFilterNet3 预训练模型；无需训练或底噪参考，100%为完整模型输出。')
+        self.neural_selection_combo.setCurrentIndex(self.neural_selection_combo.findData(engine))
+        self._neural_selection_changed()
+
     def _neural_snapshot(self):
-        return (id(self.clip), id(self.neural_model), self.neural_strength_slider.value(), self._neural_revision)
+        return (id(self.clip), id(self.neural_model), self.neural_strength_slider.value(),
+                self.deepfilter_strength_spin.value(), self._neural_revision,
+                self.neural_engine_combo.currentData())
 
     def run_neural_comparison(self):
-        if self.occupied or self.neural_model is None or self.clip is None:
+        engine = self.neural_engine_combo.currentData()
+        if self.occupied or self.clip is None or (engine == 'bp' and self.neural_model is None):
             return
         source, model = self.clip, self.neural_model
         snapshot = self._neural_snapshot()
-        strength = snapshot[2]
+        strength = snapshot[2] if engine == 'bp' else snapshot[3]
+        name = '小型 BP' if engine == 'bp' else 'DeepFilterNet3'
         clean = self._neural_demo_clean if self._neural_demo_source is source else None
+
         def compute():
             traditional = wiener_denoise(source, noise_clip=None, strength=60)
-            bp = denoise_neural(source, model, strength=strength)
-            analyses = analyze(source), analyze(traditional.clip), analyze(bp.clip)
+            result = (denoise_neural(source, model, strength=strength) if engine == 'bp'
+                      else deepfilter_denoise(source, noise_clip=None, strength=strength))
+            analyses = analyze(source), analyze(traditional.clip), analyze(result.clip)
             def snr(clip):
                 if clean is None:
                     return None
@@ -177,41 +196,63 @@ class NeuralController:
                     return None
                 return float(10*np.log10(signal/max(error, np.finfo(float).tiny)))
             metrics = {'source_snr_db': snr(source), 'traditional_snr_db': snr(traditional.clip),
-                       'bp_snr_db': snr(bp.clip), 'traditional_elapsed_seconds': traditional.elapsed_seconds,
-                       'bp_elapsed_seconds': bp.elapsed_seconds,
+                       engine+'_snr_db': snr(result.clip),
+                       'traditional_elapsed_seconds': traditional.elapsed_seconds,
+                       engine+'_elapsed_seconds': result.elapsed_seconds,
                        'traditional_clipped_samples': traditional.clipped_samples,
-                       'bp_clipped_samples': bp.clipped_samples}
-            return traditional.clip, bp.clip, analyses, metrics
+                       engine+'_clipped_samples': result.clipped_samples}
+            return traditional.clip, result.clip, analyses, metrics
+
         def apply(result):
             if self._neural_closed or self._neural_snapshot() != snapshot:
-                self._status('原声、模型或 BP 强度已变化，本次比较结果已丢弃。')
+                self._status('原声、模型、方法或强度已变化，本次比较结果已丢弃。')
                 return
-            traditional, bp, analyses, metrics = result
-            self._neural_close_plots()
-            self.neural_source_clip, self.neural_traditional_clip, self.neural_clip = source, traditional, bp
-            self.neural_source_analysis, self.neural_traditional_analysis, self.neural_analysis = analyses
-            self.neural_metrics = metrics
-            def display(value):
-                return '—' if value is None else f'{value:.2f} dB'
-            self.neural_metrics_label.setText(
-                f'SNR 原声 {display(metrics["source_snr_db"])} · 维纳 {display(metrics["traditional_snr_db"])} · BP {display(metrics["bp_snr_db"])}\n'
-                f'耗时：维纳 {metrics["traditional_elapsed_seconds"]:.3f} s · BP {metrics["bp_elapsed_seconds"]:.3f} s')
+            traditional, selected, analyses, metrics = result
+            self.neural_source_clip, self.neural_traditional_clip = source, traditional
+            self.neural_source_analysis, self.neural_traditional_analysis = analyses[:2]
+            if engine == 'bp':
+                self.neural_clip, self.neural_analysis = selected, analyses[2]
+            else:
+                self.neural_deepfilter_clip, self.neural_deepfilter_analysis = selected, analyses[2]
+            self.neural_metrics.update(metrics)
+            self._neural_metrics_text()
+            self.neural_selection_combo.setCurrentIndex(self.neural_selection_combo.findData(engine))
             self._neural_selection_changed()
-            self._status('BP / 自动维纳 60% 比较完成，可选择同一缓存试听、查看六图或导出。')
-        self._job(compute, apply, '正在运行 BP / 自动维纳比较并计算三份分析数据…')
+            self._status(f'{name} / 自动维纳 60% 比较完成；工作台原声与已有处理结果保留。')
+        self._job(compute, apply, f'正在运行{name} / 自动维纳比较并计算同源分析图…')
 
-    def _neural_clear_results(self):
-        self._neural_revision += 1
-        self.neural_player.set_clip(None)
-        self.neural_clip = self.neural_analysis = None
-        self.neural_traditional_clip = self.neural_traditional_analysis = None
-        self.neural_source_clip = self.neural_source_analysis = None
-        self.neural_metrics = {}
-        self._neural_close_plots()
-        if hasattr(self, 'neural_metrics_label'):
+    def _neural_metrics_text(self):
+        if not self.neural_metrics:
             self.neural_metrics_label.setText('尚无比较结果；无干净参考时 SNR 显示 —。')
-            self._neural_position(0)
-        self._neural_controls()
+            return
+        def display(key):
+            value = self.neural_metrics.get(key+'_snr_db')
+            return '—' if value is None else f'{value:.2f} dB'
+        lines = [f'SNR 原声 {display("source")} · 维纳 {display("traditional")}']
+        for key, name in [('deepfilter', 'DeepFilterNet3'), ('bp', '小型 BP')]:
+            elapsed = self.neural_metrics.get(key+'_elapsed_seconds')
+            lines.append(f'{name}：未运行 / 结果已失效' if elapsed is None else
+                         f'{name}：SNR {display(key)} · {elapsed:.3f} s')
+        lines.append(f'维纳耗时 {self.neural_metrics["traditional_elapsed_seconds"]:.3f} s')
+        self.neural_metrics_label.setText('\n'.join(lines))
+
+    def _neural_clear_results(self, engine=None):
+        self._neural_revision += 1
+        if engine in (None, 'bp'):
+            self.neural_clip = self.neural_analysis = None
+        if engine in (None, 'deepfilter'):
+            self.neural_deepfilter_clip = self.neural_deepfilter_analysis = None
+        if engine is None:
+            self.neural_traditional_clip = self.neural_traditional_analysis = None
+            self.neural_source_clip = self.neural_source_analysis = None
+            self.neural_metrics = {}
+            self._neural_close_plots()
+        else:
+            self.neural_metrics = {key: value for key, value in self.neural_metrics.items()
+                                   if not key.startswith(engine+'_')}
+        if hasattr(self, 'neural_metrics_label'):
+            self._neural_metrics_text()
+            self._neural_selection_changed()
 
     def _neural_source_changed(self):
         self._neural_demo_clean = self._neural_demo_source = None
@@ -219,23 +260,40 @@ class NeuralController:
 
     def _neural_strength_changed(self, value):
         self.neural_strength_label.setText(f'{value}%')
-        self._neural_clear_results()
+        self._neural_clear_results('bp')
+
+    def _deepfilter_strength_changed(self, value):
+        self._neural_clear_results('deepfilter')
 
     def _neural_selected(self):
         key = self.neural_selection_combo.currentData()
-        if key == 'source':
-            return self.neural_source_clip, self.neural_source_analysis, '原声'
-        if key == 'traditional':
-            return self.neural_traditional_clip, self.neural_traditional_analysis, '传统维纳 60%'
-        return self.neural_clip, self.neural_analysis, '小型 BP'
+        return {
+            'source': (self.neural_source_clip, self.neural_source_analysis, '原声'),
+            'traditional': (self.neural_traditional_clip, self.neural_traditional_analysis, '传统维纳 60%'),
+            'deepfilter': (self.neural_deepfilter_clip, self.neural_deepfilter_analysis, 'DeepFilterNet3'),
+            'bp': (self.neural_clip, self.neural_analysis, '小型 BP'),
+        }.get(key, (None, None, '待处理'))
+
+    def _neural_refresh_plots(self):
+        clip, analysis, name = self._neural_selected()
+        source = self.neural_source_clip if self.neural_source_clip is not None else self.clip
+        source_analysis = self.neural_source_analysis if self.neural_source_clip is not None else self.analysis
+        for plots in (getattr(self, 'intelligent_plots', None), self.neural_plots):
+            if plots is None:
+                continue
+            if source is not None:
+                plots.set_source(source, source_analysis)
+            if clip is not None:
+                plots.set_result(clip, analysis, name)
+            else:
+                plots.clear_result()
 
     def _neural_selection_changed(self, *_):
         clip, analysis, name = self._neural_selected()
-        self.neural_player.set_clip(clip)
-        self._neural_position(0)
-        if self.neural_plots is not None and clip is not None:
-            self.neural_plots.set_source(self.neural_source_clip, self.neural_source_analysis)
-            self.neural_plots.set_result(clip, analysis, name)
+        if self.neural_player._clip is not clip:
+            self.neural_player.set_clip(clip)
+        self._neural_position(self.neural_player.position_ms)
+        self._neural_refresh_plots()
         self._neural_controls()
 
     def play_neural(self):
@@ -310,15 +368,29 @@ class NeuralController:
         idle = not self.occupied and not self._neural_closed
         if not idle and self.neural_player.state in ('playing', 'paused'):
             self.neural_player.stop()
-        ready = idle and self.neural_clip is not None
+        clip, _, _ = self._neural_selected()
+        ready = idle and clip is not None
         for widget in (self.neural_training_synthetic_button, self.neural_training_load_button,
                        self.neural_epochs_spin, self.neural_batch_spin, self.neural_train_button,
                        self.neural_model_load_button, self.neural_demo_button,
-                       self.neural_strength_slider, self.neural_strength_spin):
+                       self.neural_strength_slider, self.neural_strength_spin,
+                       self.deepfilter_strength_slider, self.deepfilter_strength_spin,
+                       self.neural_engine_combo):
             widget.setEnabled(idle)
         self.neural_model_save_button.setEnabled(idle and self.neural_model is not None)
-        self.neural_compare_button.setEnabled(idle and self.neural_model is not None and self.clip is not None)
-        self.neural_selection_combo.setEnabled(ready)
+        engine = self.neural_engine_combo.currentData()
+        available, message = deepfilter_available() if engine == 'deepfilter' else (self.neural_model is not None, '教学 BP 训练、模型与原声独立保存。')
+        self.neural_unavailable_label.setText(message)
+        if self.clip is not None:
+            self.neural_source_label.setText(f'当前原声：{self.clip.name}\n{self.clip.sample_rate} Hz · {self.clip.duration:.2f} s')
+        self.neural_compare_button.setText('运行 DeepFilterNet3 / 维纳比较' if engine == 'deepfilter' else '运行 BP / 维纳比较')
+        self.neural_compare_button.setEnabled(idle and available and self.clip is not None)
+        self.neural_selection_combo.setEnabled(idle and self.neural_source_clip is not None)
+        results = {'source': self.neural_source_clip, 'traditional': self.neural_traditional_clip,
+                   'bp': self.neural_clip, 'deepfilter': self.neural_deepfilter_clip}
+        for index in range(self.neural_selection_combo.count()):
+            item = self.neural_selection_combo.model().item(index)
+            item.setEnabled(results[self.neural_selection_combo.itemData(index)] is not None)
         self.neural_play_button.setEnabled(ready and self.neural_player.state != 'playing')
         self.neural_stop_button.setEnabled(ready and self.neural_player.state in ('playing', 'paused', 'finished'))
         for widget in (self.neural_plots_button, self.neural_save_button, self.neural_send_button):
@@ -331,7 +403,7 @@ class NeuralController:
     def _neural_playback_state(self, state):
         self._neural_controls()
         if state == 'playing':
-            self._status('正在试听所选 BP 比较缓存。')
+            self._status(f'正在试听所选{self._neural_selected()[2]}比较缓存。')
 
     def _neural_output_fallback(self, name):
         if hasattr(self, '_output_fallback'):

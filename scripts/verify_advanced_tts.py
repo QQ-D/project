@@ -68,6 +68,7 @@ def main():
         original = window.clip
         text = '欢迎来到数字信号处理实验。我们正在测试中文合成和房间混响。'
         window.tabs.setCurrentIndex(1)
+        window.extension_tabs.setCurrentIndex(1)
         window.tts_text.setPlainText(text)
         window.tts_generate_button.click()
         wait_idle()
@@ -130,14 +131,18 @@ def main():
         assert difference > 1e-6
         chain_record = export('串联音效_中文合成.wav', after)
         window.tabs.setCurrentIndex(1)
+        window.extension_tabs.setCurrentIndex(0)
         window.advanced_scroll.verticalScrollBar().setValue(window.advanced_scroll.verticalScrollBar().maximum())
         screenshot('高级音效与中文TTS_串联设置.png')
 
         window.resize(1080, 720)
         app.processEvents()
+        window.extension_tabs.setCurrentIndex(1)
+        app.processEvents()
         button = window.tts_send_button
         pos = button.mapTo(window, button.rect().bottomRight())
         assert pos.x() < window.width() and pos.y() < window.height()
+        window.extension_tabs.setCurrentIndex(0)
         window.advanced_scroll.ensureWidgetVisible(window.advanced_apply_button, 10, 10)
         app.processEvents()
         button = window.advanced_apply_button

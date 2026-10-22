@@ -98,8 +98,8 @@
       "source_snr_db": 4.999967162784324,
       "traditional_snr_db": 13.90762479671313,
       "bp_snr_db": 13.908506269403354,
-      "traditional_elapsed_seconds": 0.013556531019276008,
-      "bp_elapsed_seconds": 0.02514303199131973,
+      "traditional_elapsed_seconds": 0.017391238000072917,
+      "bp_elapsed_seconds": 0.022156476999953156,
       "traditional_clipped_samples": 0,
       "bp_clipped_samples": 0
     }
@@ -151,7 +151,7 @@
     "比较保留原声与工作台缓存，三种结果的图形/播放缓存/导出一致",
     "无干净参考时SNR全部为None且界面显示—",
     "明确发送BP结果后可继续增强和混响",
-    "最小窗口训练/发送可滚动到达，TTS按钮完整可见"
+    "最小窗口训练/发送可滚动到达，TTS独立子页按钮完整可见"
   ],
   "limitations": "教学BP仅由合成谐波训练，不保证真实语音泛化或优于维纳。"
 }

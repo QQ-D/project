@@ -17,13 +17,10 @@ class ProcessingController:
         return {0:'原声', 1:'去噪', 2:'增强', 3:'音效'}.get(self.stages.checkedId(), '原声')
 
     def _can_denoise(self):
-        if self.denoise_method_combo.currentData() == 'deepfilter':
-            return True
         return self.auto_noise_check.isChecked() or (self.noise_clip is not None and self.noise_confirmed)
 
     def _denoise_snapshot(self):
-        automatic = (self.denoise_method_combo.currentData() == 'deepfilter'
-                     or self.auto_noise_check.isChecked())
+        automatic = self.auto_noise_check.isChecked()
         return (automatic, self.denoise_spin.value(), None if automatic else id(self.noise_clip),
                 True if automatic else self.noise_confirmed, self.denoise_method_combo.currentData())
 
@@ -130,8 +127,8 @@ class ProcessingController:
             return
         self._reset_effect_settings()
         self._reset_enhancement_settings()
-        self.denoise_method_combo.setCurrentIndex(self.denoise_method_combo.findData('deepfilter'))
-        self.denoise_spin.setValue(100)
+        self.denoise_method_combo.setCurrentIndex(self.denoise_method_combo.findData('wiener'))
+        self.denoise_spin.setValue(60)
         self.auto_noise_check.setChecked(True)
         self._invalidate_denoise()
         self._status('已恢复默认参数与增强/音效旁路，清除处理结果；原声与参考底噪保留。')
@@ -143,10 +140,9 @@ class ProcessingController:
         self.process_button.setEnabled(can_process)
         self.reset_button.setEnabled(idle and self.clip is not None)
         self.denoise_parameters.setEnabled(idle)
-        model_mode = self.denoise_method_combo.currentData() == 'deepfilter'
-        self.noise_reference_panel.setVisible(not model_mode)
-        self.denoise_engine_hint.setVisible(model_mode)
-        self.auto_noise_check.setEnabled(idle and not model_mode)
+        self.noise_reference_panel.setVisible(True)
+        self.denoise_engine_hint.setVisible(True)
+        self.auto_noise_check.setEnabled(idle)
         self.denoise_method_combo.setEnabled(idle)
         self.stages.button(0).setEnabled(idle and self.clip is not None)
         self.stages.button(1).setEnabled(idle and self.denoised_clip is not None)

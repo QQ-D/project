@@ -1,7 +1,7 @@
 {
   "source": "公开自写中文TTS，加人工高斯噪声；非私人录音",
   "engine": "DeepFilterNet3 / dbaf CPU",
-  "full_gui_task_seconds": 1.9723999150155578,
+  "full_gui_task_seconds": 1.8754304960000354,
   "reference_original_project": {
     "checked": true,
     "max_absolute_error": 0.0,
@@ -36,9 +36,9 @@
     "exact_output_length": true
   },
   "checks": [
-    "默认DF3完整处理，无底噪参考",
+    "智能降噪子页默认DF3完整处理，无训练/底噪参考",
     "原声不变，图形/播放缓存/导出一致",
-    "有效模型结果被增强/混响复用，未重复降噪",
+    "模型结果明确送入工作台后增强/混响，不重复降噪",
     "1080×720核心处理按钮可滚动到达"
   ],
   "scope": "未安装依赖、下载模型或启动麦克风/扬声器；试听效果需人工判断"

@@ -1,0 +1,67 @@
+{
+  "scope": "仅公开自写中文TTS人工加噪；未启动麦克风/扬声器、未读取私人录音",
+  "basic_default": "自动维纳60%，底噪采集/导入/选段入口显示",
+  "extension_tabs": [
+    "高级音效",
+    "中文 TTS",
+    "智能降噪"
+  ],
+  "same_source": {
+    "samples": 389369,
+    "sample_rate": 48000
+  },
+  "metrics": {
+    "source_snr_db": null,
+    "traditional_snr_db": null,
+    "deepfilter_snr_db": null,
+    "traditional_elapsed_seconds": 0.2550255040000593,
+    "deepfilter_elapsed_seconds": 1.1280288790001123,
+    "traditional_clipped_samples": 0,
+    "deepfilter_clipped_samples": 0,
+    "bp_snr_db": null,
+    "bp_elapsed_seconds": 0.06323771999996097,
+    "bp_clipped_samples": 0
+  },
+  "exports": [
+    {
+      "method": "source",
+      "file": "同源方法对比_source.wav",
+      "samples": 389369,
+      "sample_rate": 48000,
+      "pcm16_max_error": 0.0
+    },
+    {
+      "method": "traditional",
+      "file": "同源方法对比_traditional.wav",
+      "samples": 389369,
+      "sample_rate": 48000,
+      "pcm16_max_error": 1.52587890625e-05
+    },
+    {
+      "method": "deepfilter",
+      "file": "同源方法对比_deepfilter.wav",
+      "samples": 389369,
+      "sample_rate": 48000,
+      "pcm16_max_error": 1.52587890625e-05
+    },
+    {
+      "method": "bp",
+      "file": "同源方法对比_bp.wav",
+      "samples": 389369,
+      "sample_rate": 48000,
+      "pcm16_max_error": 1.52587890625e-05
+    }
+  ],
+  "minimum_window": [
+    1080,
+    720
+  ],
+  "checks": [
+    "DeepFilterNet3无需BP训练或底噪参考",
+    "基础结果在智能比较期间保留",
+    "两个模型缓存同时存在，选择、六图、播放器、PCM16导出一致",
+    "普通导入文件无关联干净参考，四项SNR全部为None",
+    "智能/基础/TTS音量同步；小窗口各子页核心按钮可达",
+    "明确送入才替换原声并清除比较结果"
+  ]
+}

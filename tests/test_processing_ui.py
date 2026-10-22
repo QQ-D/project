@@ -17,8 +17,7 @@ def prepare_window(app, tmp_path):
     window = MainWindow()
     window.load_path(path)
     wait_idle(app, window)
-    # These historical reference/cache tests exercise the explicit traditional
-    # method; production startup defaults to DeepFilterNet3 (tested separately).
+    # These reference/cache tests exercise the default traditional method.
     window.denoise_method_combo.setCurrentIndex(window.denoise_method_combo.findData('wiener'))
     window.denoise_spin.setValue(60)
     return window, path
@@ -240,7 +239,7 @@ def test_reset_and_clear_noise_preserve_original_and_remove_processed_cache(app,
         window.start_denoise()
         wait_idle(app, window)
         window.reset_button.click()
-        assert window.denoise_spin.value() == 100
+        assert window.denoise_spin.value() == 60
         assert window.denoised_clip is None
         assert window.clip is source
         assert window.noise_clip is noise

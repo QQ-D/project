@@ -5,7 +5,7 @@ from test_processing_ui import prepare_window,block_processing
 from test_ui import wait_idle
 
 
-def test_explicit_wiener_real_output_and_reset_to_default_model(app,tmp_path):
+def test_default_wiener_real_output_and_reset_to_traditional(app,tmp_path):
     from voice_effect_lab.audio.wiener import wiener_denoise
     window,_=prepare_window(app,tmp_path)
     try:
@@ -18,7 +18,7 @@ def test_explicit_wiener_real_output_and_reset_to_default_model(app,tmp_path):
         window.denoise_method_combo.setCurrentIndex(1)
         assert window.denoised_clip is None
         window.reset_processing()
-        assert window.denoise_method_combo.currentData()=='deepfilter'
+        assert window.denoise_method_combo.currentData()=='wiener'
     finally:window.close()
 
 

@@ -20,30 +20,37 @@ def loaded_window(app, tmp_path):
     return window
 
 
-def test_default_deepfilter_runs_without_noise_and_exports_same_cache(app, tmp_path):
+def select_deepfilter(window):
+    window.tabs.setCurrentIndex(1)
+    window.extension_tabs.setCurrentIndex(2)
+    window.neural_engine_combo.setCurrentIndex(window.neural_engine_combo.findData('deepfilter'))
+
+
+def test_extension_deepfilter_runs_without_training_or_noise_and_exports_same_cache(app, tmp_path):
     window = loaded_window(app, tmp_path)
     try:
-        assert window.denoise_method_combo.currentData() == 'deepfilter'
-        assert window.denoise_spin.value() == 100
-        assert window.noise_reference_panel.isHidden()
-        assert not window.auto_noise_check.isEnabled()
+        select_deepfilter(window)
+        assert window.denoise_method_combo.currentData() == 'wiener'
+        assert window.deepfilter_strength_spin.value() == 100 and window.neural_model is None
+        assert not window.noise_reference_panel.isHidden()
         source = window.clip
         window.auto_noise_check.setChecked(False)
         window.noise_clip = AudioClip(np.zeros(1600), 16000, '不应使用的噪声参考')
         window.noise_confirmed = False
-        assert window._can_denoise() and window._denoise_snapshot()[0]
-        window.start_denoise()
+        assert not window._can_denoise() and window.neural_compare_button.isEnabled()
+        window.run_neural_comparison()
         wait_idle(app, window, timeout=60)
         assert not window.last_error, window.last_error
-        result = window.denoised_clip
-        assert result is window.current_clip and window.player._clip is result
-        assert window.clip is source and result.sample_rate == source.sample_rate
-        assert len(result.samples) == len(source.samples) and np.isfinite(result.samples).all()
-        assert 'DeepFilterNet3' in window.denoise_status_label.text()
-        assert 'dbaf' in window.denoise_status_label.text()
-        assert '估计' not in window.denoise_status_label.text()
+        result = window.neural_deepfilter_clip
+        assert result is window.neural_player._clip
+        assert window.clip is source and window.current_clip is source and window.denoised_clip is None
+        assert result.sample_rate == source.sample_rate and len(result.samples) == len(source.samples)
+        assert np.isfinite(result.samples).all()
+        np.testing.assert_array_equal(window.intelligent_plots.axes[0, 1].lines[0].get_ydata(), window.neural_deepfilter_analysis.wave_values)
+        assert 'DeepFilterNet3' in window.neural_metrics_label.text()
+        assert window.neural_metrics['deepfilter_snr_db'] is None
         path = tmp_path/'DF输出.wav'
-        window.save_to(path)
+        window.save_neural_to(path)
         wait_idle(app, window)
         rate, samples = wavfile.read(path)
         assert rate == source.sample_rate
@@ -52,50 +59,55 @@ def test_default_deepfilter_runs_without_noise_and_exports_same_cache(app, tmp_p
         window.close()
 
 
-def test_model_failure_preserves_result_and_reset_uses_full_deepfilter(app, tmp_path, monkeypatch):
-    from voice_effect_lab.ui import processing_controller as module
+def test_model_failure_preserves_comparison_and_basic_reset_is_independent(app, tmp_path, monkeypatch):
+    from voice_effect_lab.ui import neural_controller as module
     window = loaded_window(app, tmp_path)
     try:
-        window.start_denoise()
+        select_deepfilter(window)
+        window.run_neural_comparison()
         wait_idle(app, window, timeout=60)
-        previous = window.denoised_clip
+        previous = window.neural_deepfilter_clip
         assert previous is not None and not window.last_error
-        def fail(*args):
+        def fail(*args, **kwargs):
             raise RuntimeError('公开模型进程失败测试')
-        monkeypatch.setattr(module, 'denoise_audio', fail)
-        window.start_denoise()
+        monkeypatch.setattr(module, 'deepfilter_denoise', fail)
+        window.run_neural_comparison()
         wait_idle(app, window)
-        assert window.denoised_clip is previous and window.current_clip is previous
-        assert '模型进程失败' in window.last_error
-        assert window.denoise_button.isEnabled()
+        assert window.neural_deepfilter_clip is previous and window.neural_player._clip is previous
+        assert '模型进程失败' in window.last_error and window.neural_compare_button.isEnabled()
         window.denoise_method_combo.setCurrentIndex(window.denoise_method_combo.findData('spectral'))
-        assert not window.noise_reference_panel.isHidden()
         window.denoise_spin.setValue(20)
         window.reset_processing()
-        assert window.denoise_method_combo.currentData() == 'deepfilter'
-        assert window.denoise_spin.value() == 100 and window.denoise_slider.value() == 100
-        assert window.noise_reference_panel.isHidden()
+        assert window.denoise_method_combo.currentData() == 'wiener'
+        assert window.denoise_spin.value() == 60 and window.denoise_slider.value() == 60
+        assert not window.noise_reference_panel.isHidden()
+        assert window.neural_deepfilter_clip is previous
     finally:
         window.close()
 
 
-def test_enhancement_and_effect_chain_use_deepfilter_input(app, tmp_path):
+def test_sending_deepfilter_output_then_enhancement_and_effects_use_that_source(app, tmp_path):
+    from voice_effect_lab.audio.enhance import enhance_audio
+    from voice_effect_lab.audio.effects import apply_effects
     window = loaded_window(app, tmp_path)
     try:
-        source = window.clip
-        window.use_denoise_check.setChecked(True)
+        select_deepfilter(window)
+        window.run_neural_comparison()
+        wait_idle(app, window, timeout=60)
+        assert not window.last_error, window.last_error
+        result = window.neural_deepfilter_clip
+        window.send_neural_to_workbench()
+        assert window.clip is result and window.neural_deepfilter_clip is None
         window.enhance_check.setChecked(True)
         window.gain_spin.setValue(.8)
         window.echo_strength_spin.setValue(.3)
         window.start_effects()
         wait_idle(app, window, timeout=60)
         assert not window.last_error, window.last_error
-        assert window.denoised_clip is not None and window.enhanced_clip is not None
-        assert 'DeepFilterNet3' in window.denoise_status_label.text()
-        assert window.current_clip is window.effected_clip
-        assert window._effects_from_denoise and window._enhanced_from_denoise
-        assert window.clip is source
-        window.denoise_spin.setValue(50)
-        assert window.denoised_clip is None and window.enhanced_clip is None and window.effected_clip is None
+        assert window.denoised_clip is None and window.enhanced_clip is not None
+        assert window.current_clip is window.effected_clip and window.clip is result
+        assert not window._effects_from_denoise and not window._enhanced_from_denoise
+        expected = apply_effects(enhance_audio(result, window._enhancement_settings()).clip, window._effect_settings()).clip
+        np.testing.assert_array_equal(window.effected_clip.samples, expected.samples)
     finally:
         window.close()

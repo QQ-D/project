@@ -39,6 +39,7 @@ def make_host(app, monkeypatch):
             self.output_combo.addItem('测试设备', 'test-output')
             self._init_neural()
             self.panel = self.build_neural_panel()
+            self.neural_engine_combo.setCurrentIndex(self.neural_engine_combo.findData('bp'))
             self._controls()
 
         @property

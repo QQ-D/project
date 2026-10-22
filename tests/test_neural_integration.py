@@ -15,6 +15,7 @@ def model():
 
 
 def compare(app, window, model):
+    window.neural_engine_combo.setCurrentIndex(window.neural_engine_combo.findData('bp'))
     window.neural_model = model
     window._neural_controls()
     window.neural_compare_button.click()
@@ -27,6 +28,7 @@ def test_training_and_comparison_preserve_workbench_and_export_selected_cache(ap
     window, _ = prepare_window(app, tmp_path)
     try:
         assert hasattr(window, 'neural_train_button')
+        window.neural_engine_combo.setCurrentIndex(window.neural_engine_combo.findData('bp'))
         assert not window.neural_compare_button.isEnabled()
         window.start_denoise()
         wait_idle(app, window)
@@ -52,7 +54,7 @@ def test_training_and_comparison_preserve_workbench_and_export_selected_cache(ap
         assert rate == source.sample_rate
         np.testing.assert_allclose(data/32768, result.samples, atol=1/32768)
         window.neural_strength_spin.setValue(30)
-        assert window.neural_clip is None and window.neural_traditional_clip is None
+        assert window.neural_clip is None and window.neural_traditional_clip is not None
         assert window.denoised_clip is denoised and window.current_clip is denoised
     finally:
         window.close()
