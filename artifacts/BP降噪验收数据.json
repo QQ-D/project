@@ -98,8 +98,8 @@
       "source_snr_db": 4.999967162784324,
       "traditional_snr_db": 13.90762479671313,
       "bp_snr_db": 13.908506269403354,
-      "traditional_elapsed_seconds": 0.017391238000072917,
-      "bp_elapsed_seconds": 0.022156476999953156,
+      "traditional_elapsed_seconds": 0.011567045000447251,
+      "bp_elapsed_seconds": 0.021924918999502552,
       "traditional_clipped_samples": 0,
       "bp_clipped_samples": 0
     }

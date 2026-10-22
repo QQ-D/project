@@ -14,12 +14,12 @@
     "source_snr_db": null,
     "traditional_snr_db": null,
     "deepfilter_snr_db": null,
-    "traditional_elapsed_seconds": 0.2550255040000593,
-    "deepfilter_elapsed_seconds": 1.1280288790001123,
+    "traditional_elapsed_seconds": 0.24759885400089843,
+    "deepfilter_elapsed_seconds": 1.207129848000477,
     "traditional_clipped_samples": 0,
     "deepfilter_clipped_samples": 0,
     "bp_snr_db": null,
-    "bp_elapsed_seconds": 0.06323771999996097,
+    "bp_elapsed_seconds": 0.06715878400063957,
     "bp_clipped_samples": 0
   },
   "exports": [

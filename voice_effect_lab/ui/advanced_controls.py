@@ -1,6 +1,6 @@
 """可滚动高级参数、明确的模块顺序及默认状态恢复。"""
-from PyQt5.QtCore import Qt,QSignalBlocker
-from PyQt5.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QLabel,QCheckBox,QListWidget,QListWidgetItem
+from PyQt5.QtCore import Qt,QSignalBlocker,QSize
+from PyQt5.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QLabel,QCheckBox,QListWidget,QListWidgetItem,QGridLayout,QFrame,QListView
 from ..audio.effects import DEFAULT_CHAIN_ORDER,EFFECT_NAMES
 
 # spin名、Settings字段、上下限、默认、后缀、小数位
@@ -22,22 +22,39 @@ class AdvancedControls:
     def build_advanced_panel(self,parameter,button):
         self.advanced_panel=QWidget()
         layout=QVBoxLayout(self.advanced_panel);layout.setContentsMargins(0,0,0,0)
-        for name,title,keys in GROUPS:
+        grid=QGridLayout()
+        grid.setSpacing(12)
+        for index,(name,title,keys) in enumerate(GROUPS):
+            card=QFrame()
+            card.setProperty('card',True)
+            box=QVBoxLayout(card)
+            box.setContentsMargins(14,12,14,12)
             check=QCheckBox(title);setattr(self,name+'_check',check)
+            check.setProperty('switch',True)
             check.toggled.connect(self._advanced_toggled)
-            layout.addWidget(check)
+            box.addWidget(check)
             panel=QWidget();setattr(self,name+'_parameters',panel)
-            rows=QVBoxLayout(panel);rows.setContentsMargins(0,0,0,0)
+            rows=QVBoxLayout(panel);rows.setContentsMargins(0,6,0,0)
+            rows.setSpacing(7)
             for spec in PARAMETERS:
                 key,field,low,high,default,suffix,decimals=spec
                 if key not in keys:continue
                 slider,spin=parameter(rows,LABELS[key],low,high,default,suffix,decimals)
                 setattr(self,key+'_slider',slider);setattr(self,key+'_spin',spin)
                 spin.valueChanged.connect(self._effect_parameter_changed)
-            layout.addWidget(panel)
+            box.addWidget(panel)
+            grid.addWidget(card,index//2,index%2)
+        grid.setColumnStretch(0,1)
+        grid.setColumnStretch(1,1)
+        layout.addLayout(grid)
         note=QLabel('串联顺序：基础倍率先执行，以下仅运行已启用模块。独立变速保持音高，独立变调保持时长。')
         note.setWordWrap(True);layout.addWidget(note)
-        self.chain_list=QListWidget();self.chain_list.setFixedHeight(154)
+        self.chain_list=QListWidget();self.chain_list.setFixedHeight(88)
+        self.chain_list.setFlow(QListView.LeftToRight)
+        self.chain_list.setWrapping(True)
+        self.chain_list.setResizeMode(QListView.Adjust)
+        self.chain_list.setGridSize(QSize(180,34))
+        self.chain_list.setSpacing(3)
         self._restore_chain();layout.addWidget(self.chain_list)
         row=QHBoxLayout();self.chain_up_button=button('↑ 上移');self.chain_down_button=button('↓ 下移')
         self.chain_up_button.clicked.connect(lambda:self.move_effect_step(-1))

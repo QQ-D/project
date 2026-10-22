@@ -1,7 +1,7 @@
 {
   "source": "公开自写中文TTS，加人工高斯噪声；非私人录音",
   "engine": "DeepFilterNet3 / dbaf CPU",
-  "full_gui_task_seconds": 1.8754304960000354,
+  "full_gui_task_seconds": 1.8868197239999063,
   "reference_original_project": {
     "checked": true,
     "max_absolute_error": 0.0,

@@ -99,11 +99,13 @@ class EnhancementController:
         self._job(compute, apply, '正在后台生成增强结果与分析图…')
 
     def _enhancement_controls(self):
+        self.enhance_status_label.setVisible(self.enhanced_clip is not None)
         idle = not self.occupied
         available = idle and self.clip is not None
         ready = not self.use_denoise_check.isChecked() or self.denoised_clip is not None or self._can_denoise()
         self.enhance_button.setEnabled(available and ready)
         self.enhance_check.setEnabled(idle)
+        self.normalize_check.setEnabled(available and self.enhance_check.isChecked())
         self.use_denoise_check.setEnabled(available)
         self.enhance_parameters.setEnabled(available and self.enhance_check.isChecked())
         self.stages.button(2).setEnabled(idle and self.enhanced_clip is not None)
